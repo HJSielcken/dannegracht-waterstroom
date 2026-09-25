@@ -66,13 +66,13 @@ Pas de `[vars]`-sectie in `wrangler.toml` aan:
   de bounding box waarbinnen scheepvaart wordt gevolgd. Standaard rond de
   Vecht/ARK bij Breukelen; vergroot deze als je ook scheepvaart verderop
   wilt zien aankomen.
-- `RWS_ARK_LOCATION_CODE` — de Rijkswaterstaat DDL-locatiecode voor een
-  meetpunt op het Amsterdam-Rijnkanaal bij Maarssen/Breukelen. **Niet
-  geverifieerd vanuit de omgeving waarin deze proxy is geschreven** (geen
-  netwerktoegang tot waterinfo.rws.nl tijdens het bouwen) — controleer en
-  corrigeer deze code via [waterinfo.rws.nl](https://waterinfo.rws.nl)
-  (klik het juiste meetpunt aan en lees de locatiecode af) vóór gebruik in
-  productie.
+- `RWS_ARK_LOCATION_CODE` — de Rijkswaterstaat Waterwebservices-locatiecode
+  (nieuw formaat, kleine letters) voor een meetpunt op het
+  Amsterdam-Rijnkanaal bij Maarssen/Breukelen. Staat standaard **leeg**: de
+  code kon niet worden opgezocht vanuit de omgeving waarin deze proxy is
+  geschreven. Zoek hem op via [waterinfo.rws.nl](https://waterinfo.rws.nl)
+  (klik het meetpunt aan en lees de locatiecode af). Zolang hij leeg is,
+  gebruikt `/levels` voor het ARK het streefpeil (NAP −0,40 m).
 - `HDSR_VECHT_TIMESERIES_UUID` — het Lizard-tijdreeks-UUID voor een
   Vecht-peilmeting bij Breukelen. **Ook niet geverifieerd** — vraag dit op
   via de HDSR Open Water Data API-handleiding of de Lizard-portal
@@ -102,11 +102,11 @@ VITE_AIS_PROXY_URL=wss://dannegracht-ais-proxy.<jouw-subdomain>.workers.dev/ais
 `wss:`/`ws:` te vervangen door `https:`/`http:` en het `/ais`-pad te
 strippen — je hoeft dus geen aparte env var voor `/levels` te zetten.)
 
-## Belangrijk: RWS Waterwebservices-migratie
+## RWS Waterwebservices
 
-Rijkswaterstaat is bezig met de overstap naar een nieuwe
-"Waterwebservices"-API (live sinds december 2025); de klassieke DDL-service
-die deze proxy gebruikt (`OphalenLaatsteWaarnemingen`) staat gepland om
-eind april 2026 te stoppen. Controleer vóór die datum
-[rijkswaterstaatdata.nl](https://rijkswaterstaatdata.nl/projecten/waterwebservices-overschakeling/)
-voor de nieuwe contractdetails en werk `src/levels.ts` bij.
+De klassieke DDL-service is eind april 2026 gestopt. De proxy gebruikt de opvolger
+(`ddapi20-waterwebservices.rijkswaterstaat.nl`, zelfde `OphalenLaatsteWaarnemingen`-contract).
+Die gebruikt nieuwe locatiecodes in kleine letters (bijv. `ameland.nes`); zoek de code van het
+ARK-meetpunt bij Maarssen op via [waterinfo.rws.nl](https://waterinfo.rws.nl) en vul hem in als
+`RWS_ARK_LOCATION_CODE`. Zie
+[rijkswaterstaatdata.nl](https://rijkswaterstaatdata.nl/projecten/waterwebservices-overschakeling/).

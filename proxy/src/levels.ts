@@ -5,12 +5,11 @@
 // `OphalenLaatsteWaarnemingen`, Grootheid WATHTE ("waterhoogte", water
 // level), at the location given by env.RWS_ARK_LOCATION_CODE.
 //   Docs: https://rijkswaterstaat.github.io/wm-ws-dl/ (classic DDL).
-//   NOTE: RWS is migrating to a new "Waterwebservices" API (went live
-//   Dec 2025; classic DDL scheduled to retire end of April 2026 per RWS'
-//   own migration announcements). This implementation targets the classic,
-//   still-documented `OphalenLaatsteWaarnemingen` POST endpoint; re-point
-//   RWS_BASE_URL (and re-check the request/response shape) once the new
-//   API's contract is confirmed.
+//   The classic DDL host (waterwebservices.rijkswaterstaat.nl) was retired
+//   end of April 2026; this calls its successor (ddapi20-...), which keeps
+//   the same OphalenLaatsteWaarnemingen POST contract. The successor uses
+//   new, lowercase location codes (e.g. "ameland.nes"), so the old DDL code
+//   in wrangler.toml must be replaced by the new one for the ARK gauge.
 //
 // Vecht: HDSR (Hoogheemraadschap De Stichtse Rijnlanden) Lizard open water
 // data API, a timeseries `events` lookup by UUID
@@ -31,7 +30,7 @@ import type { Env } from './env';
 export const FALLBACK_LEVELS = { vechtNapM: -0.4, arkNapM: -0.4 };
 
 const RWS_BASE_URL =
-  'https://waterwebservices.rijkswaterstaat.nl/ONLINEWAARNEMINGENSERVICES/OphalenLaatsteWaarnemingen';
+  'https://ddapi20-waterwebservices.rijkswaterstaat.nl/ONLINEWAARNEMINGENSERVICES/OphalenLaatsteWaarnemingen';
 
 interface RwsResponse {
   WaarnemingenLijst?: Array<{
