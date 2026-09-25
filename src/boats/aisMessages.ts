@@ -99,6 +99,8 @@ export interface AisTrack {
   shipTypeCode?: number;
   /** Epoch ms of the last message (static or dynamic) received for this MMSI. */
   updatedAt: number;
+  /** Epoch ms of the last position report, i.e. the time `position` refers to. */
+  positionAt?: number;
 }
 
 const KNOTS_TO_MS = 0.514444;
@@ -166,6 +168,7 @@ export function applyAisMessage(
       mmsi,
       name: meta.ShipName ?? base.name,
       position,
+      positionAt: position !== base.position ? now : base.positionAt,
       speedMs,
       courseDeg,
       updatedAt: now,
@@ -243,7 +246,33 @@ export function trackToBoat(track: AisTrack): Boat | null {
     draughtM: hydro.draughtM,
     displacementM3: hydro.displacementM3,
     massKg: hydro.massKg,
-    updatedAt: track.updatedAt,
+    updatedAt: track.positionAt ?? track.updatedAt,
+  };
+}
+
+/** Never extrapolate further than this past the last fix; boats stop and turn. */
+export const MAX_DEAD_RECKON_S = 60;
+const M_PER_DEG_LAT = 111_320;
+
+/**
+ * AIS positions arrive every few seconds (class A underway) to several
+ * minutes (class B), so between reports the boat is moved along its
+ * reported course and speed from the time of the last fix. Capped at
+ * `maxS` so a boat that went quiet doesn't drift off along a straight line.
+ */
+export function deadReckon(boat: Boat, now: number, maxS = MAX_DEAD_RECKON_S): Boat {
+  const t = Math.min(maxS, Math.max(0, (now - boat.updatedAt) / 1000));
+  if (t === 0 || boat.speedMs <= 0) return boat;
+  const rad = (boat.courseDeg * Math.PI) / 180;
+  const east = boat.speedMs * Math.sin(rad) * t;
+  const north = boat.speedMs * Math.cos(rad) * t;
+  const { lat, lon } = boat.position;
+  return {
+    ...boat,
+    position: {
+      lat: lat + north / M_PER_DEG_LAT,
+      lon: lon + east / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180)),
+    },
   };
 }
 

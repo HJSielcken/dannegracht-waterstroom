@@ -2,6 +2,7 @@ import 'leaflet/dist/leaflet.css';
 import './style.css';
 import L from 'leaflet';
 import { AisClient, type AisStatus } from './boats/ais';
+import { deadReckon } from './boats/aisMessages';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
 import { ARK_ROUTE, DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
@@ -413,7 +414,11 @@ setInterval(() => {
   const dt = ((now - lastBoatTick) / 1000) * (running ? config.timeScale : 0);
   lastBoatTick = now;
   for (const vb of virtualBoats) vb.advance(dt);
-  const boats = [...virtualBoats.map((vb) => vb.toBoat(Date.now())), ...aisBoats];
+  const wallNow = Date.now();
+  const boats = [
+    ...virtualBoats.map((vb) => vb.toBoat(wallNow)),
+    ...aisBoats.map((b) => deadReckon(b, wallNow)),
+  ];
   send({ type: 'setBoats', boats: boatsToSimBoats(boats, project) });
   drawBoats(boats);
 }, 100);
