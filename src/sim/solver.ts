@@ -204,6 +204,8 @@ export class ShallowWaterSolver {
 
     this.setupSponge();
     this.initialiseLevels();
+    // The first time step needs the real depth too (otherwise it is taken for 0.1 m).
+    for (const c of this.cells) this.lastHmax = Math.max(this.lastHmax, this.eta[c]! - grid.zb[c]!);
   }
 
   /** Change prescribed reservoir levels (takes effect through the sponge). */
@@ -254,10 +256,15 @@ export class ShallowWaterSolver {
    */
   advance(simSeconds: number, maxWallMs = Infinity): number {
     const t0 = maxWallMs < Infinity ? now() : 0;
+    // Equal steps: full steps followed by a short remainder give a periodic dt sequence, for
+    // which the forward-backward scheme is unstable (2-cell waves grow parametrically) even
+    // though every single step is within the CFL limit. Splitting what is left into equal
+    // parts on every step keeps dt constant, yet follows the limit when the flow speeds up.
     let done = 0;
     let guard = 0;
     while (done < simSeconds - 1e-9) {
-      const dt = Math.min(this.stableDt(), simSeconds - done);
+      const rest = simSeconds - done;
+      const dt = rest / Math.max(1, Math.ceil(rest / this.stableDt() - 1e-9));
       this.boatVmax = this.boats.update(this.timeS, dt, this.grid, this.meanLevel, this.p);
       this.step(dt);
       done += dt;
@@ -450,7 +457,9 @@ export class ShallowWaterSolver {
     let dVol = 0;
     for (let n = 0; n < sc.length; n++) {
       const c = sc[n]!;
-      const target = this.riverTarget(c, sa[n] === 1);
+      // Under a boat the surface lies lower by its pressure head; nudging it up to the river
+      // level instead would keep feeding water under the hull, a source that never stops.
+      const target = this.riverTarget(c, sa[n] === 1) - p[c]!;
       const e = eta[c]!;
       const rdt = sr[n]! * dt;
       // implicit (unconditionally stable) relaxation
@@ -471,7 +480,7 @@ export class ShallowWaterSolver {
       // Without a current there is no discharge to pass; the sponge alone absorbs better.
       if ((isArk ? this.currents.arkMs : this.currents.vechtMs) === 0) continue;
       const c = oc[n]!;
-      const ne = Math.max(this.riverTarget(c, isArk, ol), zb[c]!);
+      const ne = Math.max(this.riverTarget(c, isArk, ol) - p[c]!, zb[c]!);
       dVol += ne - eta[c]!;
       eta[c] = ne;
     }

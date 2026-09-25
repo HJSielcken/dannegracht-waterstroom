@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BoundaryLevels, MetricStructure, SimBoat, SimConfig } from '../types';
+import { fallbackScene } from '../geo/fallback';
+import { projectScene } from '../geo/project';
 import { Simulation, directionDeg } from './simulation';
 import { CHANNEL_LENGTH, CHANNEL_WIDTH, channelScene } from './testScene';
 
@@ -152,6 +154,34 @@ describe('Simulation', { timeout: 30_000 }, () => {
     // timeScale: 0.5 s real at 10x -> 5 s simulated.
     sim.setConfig({ timeScale: 10 });
     expect(sim.advance(0.5)).toBeCloseTo(5);
+  });
+
+  it('stays still at equal levels when advanced in short calls, as the browser does', () => {
+    // A short remainder step at the end of every call used to make grid-scale waves in the
+    // ARK grow to decimetres within a few minutes, without any boat or level difference.
+    const scene = projectScene(fallbackScene());
+    const currents = { vechtMs: 0.05, arkMs: 0.02 };
+    const sim = new Simulation(scene, { ...CONFIG, cellSizeM: 3 }, EQUAL, {}, currents);
+    for (let t = 0; t < 300; t++) sim.advanceSim(1);
+    expect(sim.timeS).toBeCloseTo(300);
+    let maxDev = 0;
+    for (const c of sim.solver.cells) maxDev = Math.max(maxDev, Math.abs(sim.solver.eta[c]! + 0.4));
+    expect(maxDev).toBeLessThan(0.01);
+  });
+
+  it('a boat lying still in a river does not drive a current through the channel', () => {
+    // The reservoir nudging used to lift the depression under the hull back to the river
+    // level, so the boat kept feeding water that flowed away through the channel.
+    const sim = make(EQUAL);
+    sim.setBoats([{ ...boat(CHANNEL_LENGTH + 100, 0, 1.5), id: 'still' }]);
+    // The boat's appearance sets the channel sloshing; only the mean flow is of interest.
+    sim.advanceSim(300);
+    const mean = [0, 0, 0, 0];
+    for (let k = 0; k < 60; k++) {
+      sim.advanceSim(10);
+      channelU(sim).forEach((u, i) => (mean[i]! += u / 60));
+    }
+    for (const u of mean) expect(Math.abs(u)).toBeLessThan(0.005);
   });
 
   it('directionDeg is clockwise from north, pointing where the water goes', () => {

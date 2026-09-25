@@ -62,6 +62,13 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.
 - **Snelheid in de gracht** is bij een peilverschil ongeveer de helft van wat de Manning-formule geeft:
   de smalle, schuin liggende gracht krijgt op het rooster trapjesranden die extra weerstand geven.
+- **Boten die verschijnen of optrekken.** Een boot die in het model verschijnt, verdringt zijn
+  waterverplaatsing binnen 15 s en een boot die direct op snelheid is, geeft een aanloopgolf. Beide
+  lopen als een golf van enkele centimeters voor de boot uit en komen bij een schip in het ARK vóór
+  het schip zelf bij de Dannegracht aan. Kijk daarom naar het moment dat het schip de monding passeert.
+- **Rivieren op peil houden** dempt ook de waterspiegeldaling van een schip in het ARK. Bij een
+  binnenvaartschip dat de monding passeert, is de stroming in de gracht daardoor ongeveer een derde
+  lager dan zonder die demping.
 - Niet gemodelleerd: wind, korte scheepsgolven, schroefwater.
 
 ## Live AIS en waterstanden
