@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { AisClient, type AisStatus } from './boats/ais';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
-import { fallbackScene } from './geo/fallback';
+import { DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
 import { geocode } from './geo/geocode';
 import { loadSceneFromOsm } from './geo/overpass';
 import { projectScene, toLatLon, toMetric } from './geo/project';
@@ -242,9 +242,7 @@ function channelAxis(): Vec2 {
 
 /** Route through the Dannegracht used by virtual boats, Vecht side first. */
 function channelRoute() {
-  return ['dannegracht-vecht-mouth', 'dannegracht-midway', 'dannegracht-ark-mouth']
-    .map((id) => scene.probes.find((p) => p.id === id)?.position)
-    .filter((p): p is { lat: number; lon: number } => !!p);
+  return DANNEGRACHT_ROUTE.map((p) => ({ ...p }));
 }
 
 const panel = new ProbePanel($('probes'), {

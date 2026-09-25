@@ -14,33 +14,54 @@ export const FALLBACK_ORIGIN: LatLon = { lat: 52.1732, lon: 4.9985 };
 // Centerlines (see RESEARCH.md — ESTIMATED / schematic, not survey data)
 // ---------------------------------------------------------------------------
 
-/** River Vecht, ~1 km stretch through Breukelen centre, running roughly north to south. */
+// Traced from a screenshot of the app over the OpenStreetMap basemap (2026-09-25), georeferenced
+// with the app's own markers: 1 px = 1/41200 deg lon = 1/66750 deg lat. Station Breukelen
+// (4.9906 E) lands on its map label, which confirms the fit. Accuracy is roughly 10-20 m.
+
+/** River Vecht through Breukelen, north to south: along the Straatweg, bending south-east at the centre. */
 const VECHT_CENTERLINE: LatLon[] = [
-  { lat: 52.1775, lon: 5.0055 },
-  { lat: 52.1755, lon: 5.0045 },
-  { lat: 52.1735, lon: 5.0035 }, // junction with the Danne
-  { lat: 52.1715, lon: 5.0025 },
-  { lat: 52.1695, lon: 5.0015 },
+  { lat: 52.18166, lon: 5.00666 },
+  { lat: 52.18002, lon: 5.00532 },
+  { lat: 52.17807, lon: 5.00411 },
+  { lat: 52.17627, lon: 5.00374 },
+  { lat: 52.17462, lon: 5.00382 },
+  { lat: 52.17313, lon: 5.00423 },
+  { lat: 52.17208, lon: 5.00556 }, // near the Danne mouth
+  { lat: 52.17088, lon: 5.0075 },
+  { lat: 52.16923, lon: 5.0092 },
+  { lat: 52.16713, lon: 5.0103 },
 ];
 
-/** The Danne / Dannegracht, from the Vecht (east) to the Amsterdam-Rijnkanaal (west). */
+/**
+ * The Danne / Dannegracht, from the Vecht (east, near Markt/Kerkvaart) along the Stationsweg to
+ * the Amsterdam-Rijnkanaal (west). The route along the Stationsweg is inferred from the bridges
+ * over the Danne there (RESEARCH.md); the gracht itself is too narrow to show at the traced zoom.
+ */
 const DANNE_CENTERLINE: LatLon[] = [
-  { lat: 52.1735, lon: 5.0035 }, // = Vecht junction point above
-  { lat: 52.1733, lon: 4.9985 },
-  { lat: 52.173, lon: 4.9935 }, // junction with the ARK
+  { lat: 52.17185, lon: 5.00593 }, // Vecht
+  { lat: 52.17155, lon: 5.00411 },
+  { lat: 52.17136, lon: 5.00217 },
+  { lat: 52.17118, lon: 4.99962 },
+  { lat: 52.17107, lon: 4.99731 },
+  { lat: 52.17098, lon: 4.99513 }, // ARK east bank
 ];
 
-/** Amsterdam-Rijnkanaal, ~1 km stretch around the Danne mouth, running north to south. */
+/** Amsterdam-Rijnkanaal west of Breukelen centre, north to south, running slightly NNW-SSE. */
 const ARK_CENTERLINE: LatLon[] = [
-  { lat: 52.178, lon: 4.9932 },
-  { lat: 52.173, lon: 4.9935 }, // = Danne junction point above
-  { lat: 52.168, lon: 4.9938 },
+  { lat: 52.18166, lon: 4.99411 },
+  { lat: 52.17702, lon: 4.9942 },
+  { lat: 52.17253, lon: 4.99452 },
+  { lat: 52.16953, lon: 4.99493 },
+  { lat: 52.16653, lon: 4.99537 },
 ];
+
+/** Route through the Dannegracht, Vecht side first; used for virtual boats. */
+export const DANNEGRACHT_ROUTE: readonly LatLon[] = DANNE_CENTERLINE;
 
 /**
  * How far the Danne polygon runs on past each river's centerline, so the schematic
  * water bodies clearly overlap instead of only touching at the junction. Both stay
- * inside the far bank (Vecht half-width 12.5 m, ARK half-width 55 m).
+ * inside the far bank (Vecht half-width 15 m, ARK half-width 57 m).
  */
 const DANNE_OVERLAP_VECHT_M = 10;
 const DANNE_OVERLAP_ARK_M = 45;
@@ -63,9 +84,9 @@ function extendPolyline(line: LatLon[], startM: number, endM: number): LatLon[] 
 // Widths / depths (see RESEARCH.md)
 // ---------------------------------------------------------------------------
 
-const VECHT_HALF_WIDTH_M = 12.5; // ~25 m wide
+const VECHT_HALF_WIDTH_M = 15; // ~30 m wide (screenshot)
 const DANNE_HALF_WIDTH_M = 5; // ~10 m wide
-const ARK_HALF_WIDTH_M = 55; // ~110 m wide
+const ARK_HALF_WIDTH_M = 57; // ~115 m wide (screenshot)
 
 const VECHT_DEPTH_M = 2.5;
 const DANNE_DEPTH_M = 1.8;
@@ -92,14 +113,22 @@ function waterBody(
 // Structures (see RESEARCH.md for sourcing/confidence of each)
 // ---------------------------------------------------------------------------
 
-/** Point interpolated along the (east-Vecht -> west-ARK) Danne centerline by fraction t. */
+/** Point at fraction t (0 = Vecht, 1 = ARK) of the length along the Danne centerline. */
 function alongDanne(t: number): LatLon {
-  const east = DANNE_CENTERLINE[0]!;
-  const west = DANNE_CENTERLINE[2]!;
-  return {
-    lat: east.lat + (west.lat - east.lat) * t,
-    lon: east.lon + (west.lon - east.lon) * t,
-  };
+  const pts = DANNE_CENTERLINE.map((p) => toMetric(p, FALLBACK_ORIGIN));
+  const seg = pts.slice(1).map((b, i) => Math.hypot(b.x - pts[i]!.x, b.y - pts[i]!.y));
+  let remaining = t * seg.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < seg.length; i++) {
+    const len = seg[i]!;
+    if (remaining <= len || i === seg.length - 1) {
+      const f = len > 0 ? Math.min(1, remaining / len) : 0;
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      return toLatLon({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }, FALLBACK_ORIGIN);
+    }
+    remaining -= len;
+  }
+  return DANNE_CENTERLINE[DANNE_CENTERLINE.length - 1]!;
 }
 
 const structures: Structure[] = [
@@ -163,25 +192,25 @@ export const FALLBACK_PROBES: Probe[] = [
     id: 'brugstraat-10e',
     name: 'Brugstraat 10e',
     // APPROXIMATE — see RESEARCH.md. Prefer geocode('Brugstraat 10e, Breukelen') at
-    // runtime; this is only the offline placeholder, placed near the Vecht-end
-    // bridge/lock cluster consistent with the street/postcode research.
-    position: { lat: 52.17355, lon: 5.001 },
+    // runtime; this is only the offline placeholder, ~15 m north of the gracht near the
+    // Vecht-end bridge/lock cluster consistent with the street/postcode research.
+    position: { lat: 52.17152, lon: 5.0029 },
     pinned: true,
   },
   {
     id: 'dannegracht-vecht-mouth',
     name: 'Dannegracht bij de Vecht',
-    position: DANNE_CENTERLINE[0]!,
+    position: alongDanne(0.04),
   },
   {
     id: 'dannegracht-ark-mouth',
     name: 'Dannegracht bij het Amsterdam-Rijnkanaal',
-    position: DANNE_CENTERLINE[2]!,
+    position: alongDanne(0.97),
   },
   {
     id: 'dannegracht-midway',
     name: 'Dannegracht (midden)',
-    position: DANNE_CENTERLINE[1]!,
+    position: alongDanne(0.5),
   },
 ];
 
