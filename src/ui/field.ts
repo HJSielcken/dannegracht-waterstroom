@@ -54,3 +54,8 @@ export function speedColour(speed: number, maxSpeed: number): string {
   const hue = 210 - 210 * t;
   return `hsl(${hue.toFixed(0)} 85% ${(45 + 10 * t).toFixed(0)}%)`;
 }
+
+export function formatDuration(s: number): string {
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m} min ${Math.floor(s % 60)} s` : `${s.toFixed(0)} s`;
+}

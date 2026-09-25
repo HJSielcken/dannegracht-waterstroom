@@ -23,8 +23,10 @@ import type {
   SimResponse,
   Vec2,
 } from './types';
+import { formatDuration } from './ui/field';
 import { FlowLayer, flowLegend } from './ui/flowLayer';
 import { ProbePanel } from './ui/probePanel';
+import { initSidebarResizer } from './ui/sidebarResizer';
 
 const DEFAULT_CONFIG: SimConfig = { cellSizeM: 3, manningN: 0.03, timeScale: 1 };
 /**
@@ -55,6 +57,8 @@ let aisBoats: Boat[] = [];
 let nextBoatId = 1;
 let nextProbeId = 1;
 let sampleRequestId = 0;
+/** Simulated time of the latest flow field, used to label the probe history. */
+let simTimeS = 0;
 
 const project = (p: { lat: number; lon: number }) => toMetric(p, scene.origin);
 const unproject = (v: Vec2) => toLatLon(v, scene.origin);
@@ -78,6 +82,7 @@ const probeLayer = L.layerGroup().addTo(map);
 const boatLayer = L.layerGroup().addTo(map);
 const flowLayer = new FlowLayer({ toLatLon: unproject, toMetric: project }).addTo(map);
 flowLegend().addTo(map);
+initSidebarResizer($('sidebar-resizer'), () => map.invalidateSize());
 
 /** Zoom to the Dannegracht, where the interesting flow is. */
 function fitToGracht(): void {
@@ -300,11 +305,12 @@ function startWorker(): void {
       case 'field':
         flowLayer.setField(msg.field);
         snapProbes(msg.field);
+        simTimeS = msg.field.timeS;
         $('sim-time').textContent = `Gesimuleerde tijd: ${formatDuration(msg.field.timeS)}`;
         break;
       case 'samples':
         if (msg.requestId === pendingSample?.id) {
-          panel.update(pendingSample.probes, msg.samples);
+          panel.update(pendingSample.probes, msg.samples, simTimeS);
           pendingSample = null;
         }
         break;
@@ -398,11 +404,6 @@ setInterval(() => {
     if (pendingSample?.id === id) pendingSample = null;
   }, 2000);
 }, 250);
-
-function formatDuration(s: number): string {
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m} min ${Math.floor(s % 60)} s` : `${s.toFixed(0)} s`;
-}
 
 // ---------------------------------------------------------------------------
 // Boats
