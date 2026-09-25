@@ -1,0 +1,307 @@
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --text: #1c2530;
+  --muted: #6b7785;
+  --border: #dde3ea;
+  --accent: #1f6fb2;
+  --water: #9cc9ec;
+  --water-edge: #5b9bd0;
+  --land: #eef0ea;
+  --ark: #c0392b;
+  --vecht: #1e8449;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141a;
+    --panel: #171e26;
+    --text: #e6edf3;
+    --muted: #8b98a6;
+    --border: #2a3440;
+    --accent: #5aa9e6;
+    --water: #1d4a6e;
+    --water-edge: #3b7cb0;
+    --land: #1b2127;
+    --ark: #ff7b6b;
+    --vecht: #58d68d;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px/1.45 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100vh;
+}
+
+.sidebar {
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar__head h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.sub {
+  margin: 2px 0 6px;
+  color: var(--muted);
+}
+
+.status {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.card h2 small {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+.hint a {
+  color: inherit;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.row input[type='search'] {
+  flex: 1;
+  min-width: 0;
+}
+
+button,
+select,
+input[type='search'] {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 64px;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.slider output {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.check {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.map {
+  height: 100vh;
+  background: var(--land);
+}
+
+.flow-canvas {
+  pointer-events: none;
+}
+
+.probes {
+  display: grid;
+  gap: 8px;
+}
+
+.probe {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.probe--pinned {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.probe header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.probe__name {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-weight: 600;
+  text-align: left;
+}
+
+.probe__remove {
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+}
+
+.probe__body {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.probe__dial {
+  width: 46px;
+  height: 46px;
+  flex: none;
+}
+
+.probe__dial circle {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.probe__needle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.3s;
+}
+
+.probe__speed {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.probe__dir {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.probe__axis {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.probe__axis[data-sign='ark'] {
+  color: var(--ark);
+}
+
+.probe__axis[data-sign='vecht'] {
+  color: var(--vecht);
+}
+
+.probe__spark {
+  width: 100%;
+  height: 44px;
+  margin-top: 4px;
+}
+
+.boats {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.boats li {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.probe-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.probe-marker--pinned {
+  width: 18px;
+  height: 18px;
+  background: #e67e22;
+}
+
+@media (max-width: 800px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vh auto;
+    height: auto;
+  }
+
+  .map {
+    height: 55vh;
+    order: -1;
+  }
+
+  .sidebar {
+    border-right: 0;
+  }
+}
