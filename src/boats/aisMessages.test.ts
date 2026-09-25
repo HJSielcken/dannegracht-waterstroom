@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAisMessage,
+  deadReckon,
   parseAisRawMessage,
   pruneStaleTracks,
   trackToBoat,
@@ -172,5 +173,40 @@ describe('pruneStaleTracks', () => {
     const pruned = pruneStaleTracks(tracks, 10000, 5000);
     expect(pruned.has(1)).toBe(false);
     expect(pruned.has(2)).toBe(true);
+  });
+});
+
+describe('deadReckon', () => {
+  const boat = trackToBoat({
+    mmsi: 1,
+    position: { lat: 52.17, lon: 5.0 },
+    courseDeg: 0,
+    speedMs: 2,
+    updatedAt: 1000,
+    positionAt: 1000,
+  })!;
+
+  it('moves the boat along its course since the last fix', () => {
+    const moved = deadReckon(boat, 11_000);
+    expect((moved.position.lat - 52.17) * 111_320).toBeCloseTo(20, 1);
+    expect(moved.position.lon).toBeCloseTo(5.0, 9);
+  });
+
+  it('caps the extrapolation time', () => {
+    const moved = deadReckon(boat, 1000 + 600_000, 60);
+    expect((moved.position.lat - 52.17) * 111_320).toBeCloseTo(120, 1);
+  });
+
+  it('leaves stopped boats in place', () => {
+    expect(deadReckon({ ...boat, speedMs: 0 }, 11_000)).toEqual({ ...boat, speedMs: 0 });
+  });
+
+  it('extrapolates from the last position report, not the last static message', () => {
+    const track = applyAisMessage(
+      { mmsi: 1, position: { lat: 52.17, lon: 5.0 }, positionAt: 1000, updatedAt: 1000 },
+      classAStatic,
+      5000,
+    );
+    expect(trackToBoat(track)!.updatedAt).toBe(1000);
   });
 });
