@@ -250,8 +250,8 @@ export function trackToBoat(track: AisTrack): Boat | null {
   };
 }
 
-/** Never extrapolate further than this past the last fix; boats stop and turn. */
-export const MAX_DEAD_RECKON_S = 60;
+/** Never extrapolate further than this (5 min) past the last fix; boats stop and turn. */
+export const MAX_DEAD_RECKON_S = 300;
 const M_PER_DEG_LAT = 111_320;
 
 /**
