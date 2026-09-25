@@ -64,6 +64,11 @@ export class ProbePanel {
     }
   }
 
+  rename(probe: Probe): void {
+    const btn = this.rows.get(probe.id)?.el.querySelector('.probe__name');
+    if (btn) btn.textContent = probe.name;
+  }
+
   update(probes: Probe[], samples: FlowSample[]): void {
     probes.forEach((probe, idx) => {
       const row = this.rows.get(probe.id);
