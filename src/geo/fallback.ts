@@ -203,17 +203,8 @@ const structures: Structure[] = [
 // ---------------------------------------------------------------------------
 
 /** Probe set shared with the live OSM scene (src/geo/overpass.ts) so switching sources
- *  keeps the same probes, including the pinned Brugstraat 10e probe. */
+ *  keeps the same probes. */
 export const FALLBACK_PROBES: Probe[] = [
-  {
-    id: 'brugstraat-10e',
-    name: 'Brugstraat 10e',
-    // APPROXIMATE — see RESEARCH.md. Prefer geocode('Brugstraat 10e, Breukelen') at
-    // runtime; this is only the offline placeholder, ~15 m north of the gracht near the
-    // Vecht-end bridge/lock cluster consistent with the street/postcode research.
-    position: { lat: 52.17152, lon: 5.0029 },
-    pinned: true,
-  },
   {
     // The centerline starts on the Vecht centerline; its bank is ~15 m further, so this
     // sits ~15 m inside the gracht.

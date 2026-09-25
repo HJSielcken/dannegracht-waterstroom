@@ -6,7 +6,6 @@ import { deadReckon } from './boats/aisMessages';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
 import { ARK_ROUTE, DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
-import { geocode } from './geo/geocode';
 import { loadSceneFromOsm } from './geo/overpass';
 import { projectScene, toLatLon, toMetric } from './geo/project';
 import { DEFAULT_LEVELS, fetchLevels } from './levels/levels';
@@ -15,6 +14,8 @@ import type {
   Boat,
   BoundaryLevels,
   FlowField,
+  FlowSample,
+  LatLon,
   Probe,
   RiverCurrents,
   Scene,
@@ -23,7 +24,7 @@ import type {
   SimResponse,
   Vec2,
 } from './types';
-import { formatDuration } from './ui/field';
+import { compassLabel, formatDuration } from './ui/field';
 import { FlowLayer, flowLegend } from './ui/flowLayer';
 import { ProbePanel } from './ui/probePanel';
 import { initSidebarResizer } from './ui/sidebarResizer';
@@ -35,9 +36,6 @@ const DEFAULT_CONFIG: SimConfig = { cellSizeM: 3, manningN: 0.03, timeScale: 1 }
  * 115 m × 5.5 m). See README.
  */
 const DEFAULT_CURRENTS: RiverCurrents = { vechtMs: 0.05, arkMs: 0.02 };
-const PINNED_PROBE_ID = 'brugstraat-10e';
-/** Geocoded probe positions further than this from the scene origin are rejected as wrong hits. */
-const MAX_GEOCODE_DISTANCE_M = 1500;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -46,7 +44,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 // ---------------------------------------------------------------------------
 
 let scene: Scene = fallbackScene();
-let probes: Probe[] = scene.probes.map((p) => ({ ...p }));
+let probes: Probe[] = scene.probes.map((p, i) => ({ ...p, label: String(i + 1) }));
 let levels: BoundaryLevels = { ...DEFAULT_LEVELS };
 let currents: RiverCurrents = { ...DEFAULT_CURRENTS };
 let config: SimConfig = { ...DEFAULT_CONFIG };
@@ -56,6 +54,8 @@ let virtualBoats: VirtualBoat[] = [];
 let aisBoats: Boat[] = [];
 let nextBoatId = 1;
 let nextProbeId = 1;
+/** Next number shown on a new probe's map marker and panel badge. */
+let nextProbeLabel = probes.length + 1;
 let sampleRequestId = 0;
 /** Simulated time of the latest flow field, used to label the probe history. */
 let simTimeS = 0;
@@ -129,8 +129,8 @@ function drawProbes(): void {
     L.marker([probe.position.lat, probe.position.lon], {
       icon: L.divIcon({
         className: '',
-        html: `<div class="probe-marker${probe.pinned ? ' probe-marker--pinned' : ''}"></div>`,
-        iconSize: probe.pinned ? [18, 18] : [14, 14],
+        html: `<div class="probe-marker">${probe.label ?? ''}</div>`,
+        iconSize: [22, 22],
       }),
       draggable: true,
       title: probe.name,
@@ -230,13 +230,63 @@ function boatLabel(b: Boat): string {
   ].join('<br>');
 }
 
+// ---------------------------------------------------------------------------
+// Point inspector: click anywhere on the map to read the water speed there
+// ---------------------------------------------------------------------------
+
+/** Coordinate clicked on the map; sampled together with the probes while its popup is open. */
+let inspectPoint: LatLon | null = null;
+const inspectPopup = L.popup({ className: 'inspect-popup', autoPan: false, maxWidth: 260 });
+inspectPopup.on('remove', () => {
+  inspectPoint = null;
+});
+
+function inspectHtml(pos: LatLon, sample: FlowSample | null): string {
+  const coord = `${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`;
+  let body: string;
+  if (!sample) {
+    body = '<div class="inspect__speed">…</div>';
+  } else if (!sample.wet) {
+    body = '<div class="inspect__speed inspect__speed--dry">Geen water op dit punt</div>';
+  } else {
+    body = `
+      <div class="inspect__speed">${(sample.speedMs * 100).toFixed(1)} cm/s</div>
+      <div class="inspect__detail">
+        richting ${compassLabel(sample.directionDeg)} (${sample.directionDeg.toFixed(0)}°)<br>
+        ${(sample.speedMs * 3.6).toFixed(2)} km/u · diepte ${sample.depthM.toFixed(2)} m
+      </div>`;
+  }
+  return `
+    <div class="inspect">
+      <div class="inspect__coord">${coord}</div>
+      ${body}
+      <button class="inspect__add" type="button">Als meetpunt volgen</button>
+    </div>`;
+}
+
+function renderInspect(sample: FlowSample | null): void {
+  if (!inspectPoint) return;
+  inspectPopup.setContent(inspectHtml(inspectPoint, sample));
+  const pos = inspectPoint;
+  inspectPopup
+    .getElement()
+    ?.querySelector('.inspect__add')
+    ?.addEventListener('click', () => {
+      probes.push({
+        id: `probe-${nextProbeId++}`,
+        name: `${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}`,
+        position: pos,
+        label: String(nextProbeLabel++),
+      });
+      drawProbes();
+      map.closePopup(inspectPopup);
+    });
+}
+
 map.on('click', (e: L.LeafletMouseEvent) => {
-  probes.push({
-    id: `probe-${nextProbeId++}`,
-    name: `Meetpunt ${nextProbeId - 1}`,
-    position: { lat: e.latlng.lat, lon: e.latlng.lng },
-  });
-  drawProbes();
+  inspectPoint = { lat: e.latlng.lat, lon: e.latlng.lng };
+  inspectPopup.setLatLng(e.latlng).openOn(map);
+  renderInspect(null);
 });
 
 // ---------------------------------------------------------------------------
@@ -310,7 +360,9 @@ function startWorker(): void {
         break;
       case 'samples':
         if (msg.requestId === pendingSample?.id) {
-          panel.update(pendingSample.probes, msg.samples, simTimeS);
+          const n = pendingSample.probes.length;
+          panel.update(pendingSample.probes, msg.samples.slice(0, n), simTimeS);
+          if (inspectPoint === pendingSample.inspect) renderInspect(msg.samples[n] ?? null);
           pendingSample = null;
         }
         break;
@@ -325,16 +377,11 @@ function startWorker(): void {
   send({ type: 'init', scene: projectScene(sceneForSim()), config, levels, currents });
 }
 
-/** Address of the pinned probe; the probe itself sits on the nearest Dannegracht water. */
-let pinnedAddress = probes.find((p) => p.id === PINNED_PROBE_ID)?.position ?? null;
-let pinnedSnapped = false;
 /** Water body kind per grid cell of the current simulation (from the worker's 'ready'). */
 let gridKind: Int8Array | null = null;
 let defaultsSnapped = false;
 /** Default probes that must measure the gracht itself, not the Vecht or the ARK. */
-const GRACHT_PROBE_IDS = new Set(
-  scene.probes.filter((p) => p.id !== PINNED_PROBE_ID).map((p) => p.id),
-);
+const GRACHT_PROBE_IDS = new Set(scene.probes.map((p) => p.id));
 
 /** Nearest wet Dannegracht cell centre within maxM of `a`, or null. */
 function nearestGrachtCell(field: FlowField, a: Vec2, maxM: number): { p: Vec2; d: number } | null {
@@ -354,26 +401,13 @@ function nearestGrachtCell(field: FlowField, a: Vec2, maxM: number): { p: Vec2; 
 }
 
 /**
- * Keep the fixed probes on the gracht: the pinned probe moves from its (on-land) address to
- * the nearest Dannegracht cell, and the other default probes move there when they fall on
- * land or in a river (e.g. with live OSM geometry, which differs from the fallback sketch).
- * Only Dannegracht cells count, so an address near the Vecht does not end up measuring it.
+ * Keep the default probes on the gracht: they move to the nearest Dannegracht cell when they
+ * fall on land or in a river (e.g. with live OSM geometry, which differs from the fallback
+ * sketch). Only Dannegracht cells count, so a probe near the Vecht does not end up measuring it.
  */
 function snapProbes(field: FlowField): void {
   if (!gridKind) return;
   let moved = false;
-  const pinned = probes.find((p) => p.id === PINNED_PROBE_ID);
-  if (!pinnedSnapped && pinned && pinnedAddress) {
-    pinnedSnapped = true;
-    // Beyond 80 m the address is not really at the gracht.
-    const hit = nearestGrachtCell(field, project(pinnedAddress), 80);
-    if (hit) {
-      pinned.position = unproject(hit.p);
-      pinned.name = `Brugstraat 10e (water op ${hit.d.toFixed(0)} m)`;
-      panel.rename(pinned);
-      moved = true;
-    }
-  }
   if (!defaultsSnapped) {
     defaultsSnapped = true;
     for (const probe of probes) {
@@ -388,16 +422,15 @@ function snapProbes(field: FlowField): void {
   if (moved) drawProbes();
 }
 
-let pendingSample: { id: number; probes: Probe[] } | null = null;
+let pendingSample: { id: number; probes: Probe[]; inspect: LatLon | null } | null = null;
 setInterval(() => {
   if (!worker || pendingSample) return;
   const snapshot = probes.slice();
-  pendingSample = { id: ++sampleRequestId, probes: snapshot };
-  send({
-    type: 'sample',
-    requestId: pendingSample.id,
-    points: snapshot.map((p) => project(p.position)),
-  });
+  const inspect = inspectPoint;
+  pendingSample = { id: ++sampleRequestId, probes: snapshot, inspect };
+  const points = snapshot.map((p) => project(p.position));
+  if (inspect) points.push(project(inspect));
+  send({ type: 'sample', requestId: pendingSample.id, points });
   // Drop a request that never got an answer (e.g. worker restarted).
   const id = pendingSample.id;
   setTimeout(() => {
@@ -567,20 +600,6 @@ function setLockOpen(open: boolean): void {
 }
 lockToggle.addEventListener('change', () => setLockOpen(lockToggle.checked));
 
-$<HTMLFormElement>('geocode-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const query = $<HTMLInputElement>('geocode-input').value.trim();
-  if (!query) return;
-  const hit = await geocode(query.includes('Breukelen') ? query : `${query} Breukelen`);
-  if (!hit) {
-    status.textContent = `Adres "${query}" niet gevonden.`;
-    return;
-  }
-  probes.push({ id: `probe-${nextProbeId++}`, name: query, position: hit });
-  drawProbes();
-  map.panTo([hit.lat, hit.lon]);
-});
-
 // ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
@@ -600,23 +619,11 @@ async function init(): Promise<void> {
     const osm = await loadSceneFromOsm(AbortSignal.timeout(20000));
     if (osm.waterBodies.some((w) => w.kind === 'dannegracht')) {
       scene = osm;
-      pinnedSnapped = false;
       drawScene();
       startWorker();
     }
   } catch {
     // Fallback scene stays active; the status line already says so.
-  }
-
-  // Place the pinned probe on the real address.
-  const hit = await geocode('Brugstraat 10e, Breukelen').catch(() => null);
-  if (hit) {
-    const d = Math.hypot(project(hit).x, project(hit).y);
-    const pinned = probes.find((p) => p.id === PINNED_PROBE_ID);
-    if (pinned && d < MAX_GEOCODE_DISTANCE_M) {
-      pinnedAddress = hit;
-      pinnedSnapped = false;
-    }
   }
 }
 

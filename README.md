@@ -1,10 +1,11 @@
 # Dannegracht waterstroom
 
 Browser-simulatie van de waterstroom in de **Dannegracht in Breukelen**, tussen de **Vecht** en het
-**Amsterdam-Rijnkanaal (ARK)**, met speciale aandacht voor het punt bij **Brugstraat 10e**.
+**Amsterdam-Rijnkanaal (ARK)**.
 
 - Schematische kaart met stromingspijlen en bewegende deeltjes
-- Klik op het water (of zoek een adres) om op elk punt snelheid en richting te zien
+- Klik op een coördinaat op de kaart om daar live snelheid, richting en diepte te zien, en volg het punt desgewenst als meetpunt
+- Meetpunten zijn genummerd; hetzelfde nummer staat op de kaart en bij de grafiek in het zijpaneel
 - Waterstanden van de Vecht en het ARK instelbaar, of live op te halen
 - Boten beïnvloeden de stroming: virtuele boten, en live AIS-schepen met geschatte massa en volume
 - Schakelaar voor de historische schutsluis aan de Vecht-kant
@@ -57,7 +58,6 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   Bij een dichte sluis is er vrijwel geen doorstroming.
 - **Peilen.** Standaard staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen vereisen
   `server/` met de meetlocaties van RWS en HDSR (zie [Docker](#docker)).
-- **Brugstraat 10e** wordt in de browser opgezocht via PDOK en naar het dichtstbijzijnde water verplaatst.
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
   spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.

@@ -7,6 +7,7 @@ import {
   type BBox,
   type OverpassResponse,
 } from './overpass';
+import { FALLBACK_PROBES } from './fallback';
 
 const BBOX: BBox = { south: -10, west: -10, north: 10, east: 10 };
 
@@ -234,8 +235,8 @@ describe('parseOverpassResponse', () => {
     expect(bridge.openFraction).toBe(0.85);
   });
 
-  it('includes the shared fallback probe set (pinned Brugstraat 10e included)', () => {
+  it('includes the shared fallback probe set', () => {
     const scene = parseOverpassResponse({ elements: [] }, bbox);
-    expect(scene.probes.find((p) => p.id === 'brugstraat-10e')?.pinned).toBe(true);
+    expect(scene.probes.map((p) => p.id)).toEqual(FALLBACK_PROBES.map((p) => p.id));
   });
 });

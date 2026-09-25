@@ -75,36 +75,16 @@ describe('fallbackScene', () => {
     expect(ringMinDistToRing(danneRing, arkRing)).toBeLessThan(60);
   });
 
-  it('pins the Brugstraat 10e probe and cannot remove it', () => {
-    const probe = scene.probes.find((p) => p.id === 'brugstraat-10e');
-    expect(probe).toBeDefined();
-    expect(probe?.pinned).toBe(true);
-  });
-
-  it('places Brugstraat 10e within ~50 m of the Dannegracht', () => {
-    const origin = scene.origin;
-    const probe = scene.probes.find((p) => p.id === 'brugstraat-10e')!;
-    const danne = scene.waterBodies.find((w) => w.kind === 'dannegracht')!;
-    const danneRing = danne.rings[0]!.map((p) => toMetric(p, origin));
-    const probeM = toMetric(probe.position, origin);
-    expect(ringMinDistToPoint(danneRing, probeM)).toBeLessThan(50);
-  });
-
   it('includes the extra Dannegracht probes (Vecht mouth, ARK mouth, midway)', () => {
     const ids = scene.probes.map((p) => p.id).sort();
     expect(ids).toEqual(
-      [
-        'brugstraat-10e',
-        'dannegracht-ark-mouth',
-        'dannegracht-midway',
-        'dannegracht-vecht-mouth',
-      ].sort(),
+      ['dannegracht-ark-mouth', 'dannegracht-midway', 'dannegracht-vecht-mouth'].sort(),
     );
   });
 
   it('puts the Dannegracht probes in Dannegracht cells, not in the Vecht or ARK', () => {
     const grid = buildGrid(projectScene(scene), { cellSizeM: 3 });
-    for (const probe of scene.probes.filter((p) => !p.pinned)) {
+    for (const probe of scene.probes) {
       const m = toMetric(probe.position, scene.origin);
       const i = Math.floor((m.x - grid.originX) / grid.dx);
       const j = Math.floor((m.y - grid.originY) / grid.dx);

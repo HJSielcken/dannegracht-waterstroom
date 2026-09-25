@@ -45,11 +45,12 @@ export class ProbePanel {
     for (const probe of probes) {
       if (this.rows.has(probe.id)) continue;
       const el = document.createElement('article');
-      el.className = `probe${probe.pinned ? ' probe--pinned' : ''}`;
+      el.className = 'probe';
       el.innerHTML = `
         <header>
+          <span class="probe__badge probe-marker" aria-hidden="true"></span>
           <button class="probe__name" type="button"></button>
-          ${probe.pinned ? '' : '<button class="probe__remove" type="button" aria-label="Verwijder meetpunt">×</button>'}
+          <button class="probe__remove" type="button" aria-label="Verwijder meetpunt">×</button>
         </header>
         <div class="probe__body">
           <svg class="probe__dial" viewBox="-20 -20 40 40" aria-hidden="true">
@@ -66,13 +67,13 @@ export class ProbePanel {
           <canvas class="probe__spark"></canvas>
           <div class="probe__tip" hidden></div>
         </div>`;
+      el.querySelector<HTMLElement>('.probe__badge')!.textContent = probe.label ?? '';
       el.querySelector<HTMLButtonElement>('.probe__name')!.textContent = probe.name;
       el.querySelector('.probe__name')!.addEventListener('click', () => this.opts.onFocus(probe));
       el.querySelector('.probe__remove')?.addEventListener('click', () =>
         this.opts.onRemove(probe),
       );
-      if (probe.pinned) this.root.prepend(el);
-      else this.root.append(el);
+      this.root.append(el);
       const row: Row = { probe, el, history: [], hover: null };
       this.rows.set(probe.id, row);
       const canvas = el.querySelector<HTMLCanvasElement>('.probe__spark')!;
