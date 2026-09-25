@@ -1,5 +1,5 @@
 import type { FlowSample, Probe, Vec2 } from '../types';
-import { compassLabel } from './field';
+import { compassLabel, formatDuration } from './field';
 
 export interface ProbePanelOptions {
   /** Unit vector along the Dannegracht pointing from the Vecht towards the ARK (metric frame). */
@@ -8,10 +8,20 @@ export interface ProbePanelOptions {
   onRemove: (probe: Probe) => void;
 }
 
+interface HistoryPoint {
+  /** Velocity along the gracht axis in m/s; positive = towards the ARK. */
+  along: number;
+  speedMs: number;
+  simTimeS: number;
+  wallTime: Date;
+}
+
 interface Row {
   probe: Probe;
   el: HTMLElement;
-  history: number[];
+  history: HistoryPoint[];
+  /** History index under the mouse, or null when not hovering the sparkline. */
+  hover: number | null;
 }
 
 const HISTORY = 240;
@@ -52,7 +62,10 @@ export class ProbePanel {
             <div class="probe__axis">–</div>
           </div>
         </div>
-        <canvas class="probe__spark" width="280" height="44"></canvas>`;
+        <div class="probe__chart">
+          <canvas class="probe__spark"></canvas>
+          <div class="probe__tip" hidden></div>
+        </div>`;
       el.querySelector<HTMLButtonElement>('.probe__name')!.textContent = probe.name;
       el.querySelector('.probe__name')!.addEventListener('click', () => this.opts.onFocus(probe));
       el.querySelector('.probe__remove')?.addEventListener('click', () =>
@@ -60,7 +73,19 @@ export class ProbePanel {
       );
       if (probe.pinned) this.root.prepend(el);
       else this.root.append(el);
-      this.rows.set(probe.id, { probe, el, history: [] });
+      const row: Row = { probe, el, history: [], hover: null };
+      this.rows.set(probe.id, row);
+      const canvas = el.querySelector<HTMLCanvasElement>('.probe__spark')!;
+      canvas.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const idx = Math.round(((e.clientX - rect.left) / rect.width) * (HISTORY - 1));
+        row.hover = Math.min(Math.max(idx, 0), HISTORY - 1);
+        renderChart(row);
+      });
+      canvas.addEventListener('pointerleave', () => {
+        row.hover = null;
+        renderChart(row);
+      });
     }
   }
 
@@ -69,7 +94,7 @@ export class ProbePanel {
     if (btn) btn.textContent = probe.name;
   }
 
-  update(probes: Probe[], samples: FlowSample[]): void {
+  update(probes: Probe[], samples: FlowSample[], simTimeS: number): void {
     probes.forEach((probe, idx) => {
       const row = this.rows.get(probe.id);
       const s = samples[idx];
@@ -96,35 +121,82 @@ export class ProbePanel {
       const needle = row.el.querySelector<SVGElement>('.probe__needle')!;
       needle.setAttribute('transform', `rotate(${s.directionDeg.toFixed(1)})`);
       needle.style.opacity = s.speedMs < 0.001 ? '0.2' : '1';
-      row.history.push(along);
+      row.history.push({ along, speedMs: s.speedMs, simTimeS, wallTime: new Date() });
       if (row.history.length > HISTORY) row.history.shift();
-      drawSpark(row.el.querySelector<HTMLCanvasElement>('.probe__spark')!, row.history);
+      renderChart(row);
     });
   }
 }
 
+/** Redraw the sparkline and, when hovering, the tooltip for the point under the mouse. */
+function renderChart(row: Row): void {
+  const canvas = row.el.querySelector<HTMLCanvasElement>('.probe__spark')!;
+  const tip = row.el.querySelector<HTMLElement>('.probe__tip')!;
+  // Snap to the newest point while the history does not yet span the full width.
+  const idx = row.hover === null ? null : Math.min(row.hover, row.history.length - 1);
+  const point = idx !== null && idx >= 0 ? row.history[idx] : undefined;
+  drawSpark(canvas, row.history, point ? idx : null);
+  if (!point) {
+    tip.hidden = true;
+    return;
+  }
+  const cms = point.speedMs * 100;
+  const dir = Math.abs(point.along) < 0.002 ? 'stil' : point.along > 0 ? '→ ARK' : '← Vecht';
+  tip.textContent = `${cms.toFixed(cms < 10 ? 1 : 0)} cm/s ${dir} · ${point.wallTime.toLocaleTimeString('nl-NL')} (sim ${formatDuration(point.simTimeS)})`;
+  tip.hidden = false;
+  const w = canvas.clientWidth;
+  const x = ((idx ?? 0) / (HISTORY - 1)) * w;
+  const half = tip.offsetWidth / 2;
+  tip.style.left = `${Math.min(Math.max(x, half), w - half)}px`;
+}
+
 /** Sparkline of the along-channel velocity; above the midline = towards the ARK. */
-function drawSpark(canvas: HTMLCanvasElement, values: number[]): void {
+function drawSpark(canvas: HTMLCanvasElement, points: HistoryPoint[], hover: number | null): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const { width: w, height: h } = canvas;
+  // Match the backing store to the displayed size so the line stays crisp at any sidebar width.
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  const values = points.map((p) => p.along);
   const styles = getComputedStyle(canvas);
+  const muted = styles.getPropertyValue('--muted') || '#888';
+  const accent = styles.getPropertyValue('--accent') || '#2b7bb9';
   const max = Math.max(0.01, ...values.map(Math.abs));
-  ctx.strokeStyle = styles.getPropertyValue('--muted') || '#888';
+  const xAt = (i: number) => (i / (HISTORY - 1)) * w;
+  const yAt = (val: number) => h / 2 - (val / max) * (h / 2 - 3);
+  ctx.strokeStyle = muted;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0, h / 2);
   ctx.lineTo(w, h / 2);
   ctx.stroke();
-  ctx.strokeStyle = styles.getPropertyValue('--accent') || '#2b7bb9';
+  ctx.strokeStyle = accent;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   values.forEach((val, i) => {
-    const x = (i / (HISTORY - 1)) * w;
-    const y = h / 2 - (val / max) * (h / 2 - 3);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    if (i === 0) ctx.moveTo(xAt(i), yAt(val));
+    else ctx.lineTo(xAt(i), yAt(val));
   });
   ctx.stroke();
+  if (hover === null || hover >= values.length) return;
+  const x = xAt(hover);
+  ctx.strokeStyle = muted;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(x, 0);
+  ctx.lineTo(x, h);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.arc(x, yAt(values[hover]!), 3, 0, Math.PI * 2);
+  ctx.fill();
 }
