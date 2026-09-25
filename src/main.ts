@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { AisClient, type AisStatus } from './boats/ais';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
-import { DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
+import { ARK_ROUTE, DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
 import { geocode } from './geo/geocode';
 import { loadSceneFromOsm } from './geo/overpass';
 import { projectScene, toLatLon, toMetric } from './geo/project';
@@ -240,9 +240,10 @@ function channelAxis(): Vec2 {
   return { x: (pb.x - pa.x) / len, y: (pb.y - pa.y) / len };
 }
 
-/** Route through the Dannegracht used by virtual boats, Vecht side first. */
-function channelRoute() {
-  return DANNEGRACHT_ROUTE.map((p) => ({ ...p }));
+/** Route used by virtual boats: the ARK (north first) or the Dannegracht (Vecht side first). */
+function channelRoute(waterway: string) {
+  const route = waterway === 'danne' ? DANNEGRACHT_ROUTE : ARK_ROUTE;
+  return route.map((p) => ({ ...p }));
 }
 
 const panel = new ProbePanel($('probes'), {
@@ -395,9 +396,10 @@ presetSelect.addEventListener('change', () => {
 presetSelect.dispatchEvent(new Event('change'));
 
 $('boat-launch').addEventListener('click', () => {
-  const route = channelRoute();
+  const [waterway, direction] = $<HTMLSelectElement>('boat-route').value.split(':');
+  const route = channelRoute(waterway!);
   if (route.length < 2) return;
-  if ($<HTMLSelectElement>('boat-route').value === 'a2v') route.reverse();
+  if (direction === 'reverse') route.reverse();
   virtualBoats.push(
     new VirtualBoat({
       id: `virtual-${nextBoatId++}`,

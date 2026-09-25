@@ -59,6 +59,17 @@ const ARK_CENTERLINE: LatLon[] = [
 export const DANNEGRACHT_ROUTE: readonly LatLon[] = DANNE_CENTERLINE;
 
 /**
+ * Route along the Amsterdam-Rijnkanaal, north to south; used for virtual boats. Follows the
+ * ARK centerline but stops ~80 m short of both ends, so even a 110 m vessel stays in the water
+ * when it turns around.
+ */
+export const ARK_ROUTE: readonly LatLon[] = [
+  { lat: 52.18094, lon: 4.99412 },
+  ...ARK_CENTERLINE.slice(1, -1),
+  { lat: 52.16725, lon: 4.99527 },
+];
+
+/**
  * How far the Danne polygon runs on past each river's centerline, so the schematic
  * water bodies clearly overlap instead of only touching at the junction. Both stay
  * inside the far bank (Vecht half-width 15 m, ARK half-width 57 m).
