@@ -508,7 +508,9 @@ $('levels-live').addEventListener('click', async () => {
   $('levels-source').textContent = 'Live peilen ophalen…';
   const live = await fetchLevels();
   if (live) setLevels(live.levels, `Bron: ${live.source} (${live.measuredAt}).`);
-  else $('levels-source').textContent = 'Live peilen niet beschikbaar (geen proxy ingesteld).';
+  else
+    $('levels-source').textContent =
+      'Live peilen niet beschikbaar (proxy niet ingesteld of niet bereikbaar).';
 });
 
 const currentVecht = $<HTMLInputElement>('current-vecht');

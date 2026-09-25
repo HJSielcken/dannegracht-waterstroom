@@ -9,10 +9,11 @@
 // API key as a secret, subscribes to a bounding box around the Dannegracht,
 // and relays the raw aisstream.io JSON messages through unmodified.
 //
-// The proxy URL is read from `import.meta.env.VITE_AIS_PROXY_URL`. When it
-// is not configured, the client is intentionally inert and reports status
-// 'disabled' — this is normal for local dev / anyone who hasn't deployed the
-// proxy, not an error condition.
+// The proxy URL is read from `import.meta.env.VITE_AIS_PROXY_URL`: an
+// absolute wss:// URL, or a path such as `/ais` when server/ serves the app
+// and the relay on the same origin. When it is not configured, the client is
+// intentionally inert and reports status 'disabled' — this is normal for
+// local dev / anyone who hasn't deployed the proxy, not an error condition.
 import type { Boat } from '../types';
 import {
   applyAisMessage,
@@ -22,6 +23,7 @@ import {
   type AisTrack,
   STALE_AFTER_MS,
 } from './aisMessages';
+import { aisSocketUrl } from '../proxyUrl';
 
 export type AisStatus = 'disabled' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -29,7 +31,7 @@ export type AisListener = (boats: Boat[]) => void;
 export type AisStatusListener = (status: AisStatus) => void;
 
 export interface AisClientOptions {
-  /** Proxy WebSocket URL, e.g. wss://ais-proxy.example.workers.dev/ais. Defaults to `import.meta.env.VITE_AIS_PROXY_URL`. */
+  /** Proxy WebSocket URL, e.g. wss://ais-proxy.example.workers.dev/ais or `/ais`. Defaults to `import.meta.env.VITE_AIS_PROXY_URL`. */
   proxyUrl?: string;
   /** Drop boats not heard from for this long. Default 10 minutes. */
   staleAfterMs?: number;
@@ -147,9 +149,14 @@ export class AisClient {
     this.setStatus(
       this.status === 'closed' || this.status === 'disabled' ? 'connecting' : 'reconnecting',
     );
+    const url = aisSocketUrl(this.proxyUrl);
+    if (!url) {
+      this.setStatus('disabled');
+      return;
+    }
     let ws: WebSocket;
     try {
-      ws = new this.WebSocketImpl(this.proxyUrl);
+      ws = new this.WebSocketImpl(url);
     } catch {
       this.scheduleReconnect();
       return;

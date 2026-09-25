@@ -1,10 +1,11 @@
 services:
-  web:
+  app:
     image: ${DOCKER_IMAGE:-hjsielcken/dannegracht-waterstroom}:${DOCKER_TAG:-latest}
-    build:
-      context: .
-      args:
-        VITE_AIS_PROXY_URL: ${VITE_AIS_PROXY_URL:-}
+    build: .
     ports:
-      - '${PORT:-8533}:80'
+      - '${PORT:-8533}:8080'
+    environment:
+      AISSTREAM_API_KEY: ${AISSTREAM_API_KEY:-}
+      RWS_ARK_LOCATION_CODE: ${RWS_ARK_LOCATION_CODE:-}
+      HDSR_VECHT_TIMESERIES_UUID: ${HDSR_VECHT_TIMESERIES_UUID:-}
     restart: unless-stopped
