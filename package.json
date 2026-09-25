@@ -1,0 +1,41 @@
+{
+  "name": "dannegracht-waterstroom",
+  "version": "1.0.0",
+  "description": "Browser-simulatie van de waterstroom in de Dannegracht (Breukelen) tussen de Vecht en het Amsterdam-Rijnkanaal",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HJSielcken/dannegracht-waterstroom.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HJSielcken/dannegracht-waterstroom/issues"
+  },
+  "homepage": "https://github.com/HJSielcken/dannegracht-waterstroom#readme",
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/leaflet": "^1.9.22",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "private": true,
+  "type": "module"
+}
