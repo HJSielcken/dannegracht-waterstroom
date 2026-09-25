@@ -278,6 +278,40 @@ button:hover {
   border-bottom: 1px dashed var(--border);
 }
 
+.flow-legend {
+  min-width: 170px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.flow-legend__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.flow-legend__bar {
+  height: 8px;
+  border-radius: 4px;
+  outline: 1px solid rgba(12, 22, 34, 0.5);
+}
+
+.flow-legend__ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-legend__note {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
 .boat-icon {
   background: none;
   border: 0;

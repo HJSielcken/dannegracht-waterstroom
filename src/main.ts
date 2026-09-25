@@ -20,7 +20,7 @@ import type {
   SimResponse,
   Vec2,
 } from './types';
-import { FlowLayer } from './ui/flowLayer';
+import { FlowLayer, flowLegend } from './ui/flowLayer';
 import { ProbePanel } from './ui/probePanel';
 
 const DEFAULT_CONFIG: SimConfig = { cellSizeM: 3, manningN: 0.03, timeScale: 1 };
@@ -67,6 +67,7 @@ const structureLayer = L.layerGroup().addTo(map);
 const probeLayer = L.layerGroup().addTo(map);
 const boatLayer = L.layerGroup().addTo(map);
 const flowLayer = new FlowLayer({ toLatLon: unproject, toMetric: project }).addTo(map);
+flowLegend().addTo(map);
 
 /** Zoom to the Dannegracht, where the interesting flow is. */
 function fitToGracht(): void {
