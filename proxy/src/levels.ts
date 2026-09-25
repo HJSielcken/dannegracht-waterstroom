@@ -48,8 +48,8 @@ async function fetchArkLevelNapM(env: Env): Promise<{ value: number; measuredAt:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        AquoPlusWaarnemingMetadata: { AquoMetadata: { Grootheid: { Code: 'WATHTE' } } },
-        Locatie: { Code: env.RWS_ARK_LOCATION_CODE },
+        AquoPlusWaarnemingMetadataLijst: [{ AquoMetadata: { Grootheid: { Code: 'WATHTE' } } }],
+        LocatieLijst: [{ Code: env.RWS_ARK_LOCATION_CODE }],
       }),
     });
     if (!res.ok) return null;

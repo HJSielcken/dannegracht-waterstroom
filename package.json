@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "start": "node server/index.ts",
+    "start": "node --env-file-if-exists=.env server/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p server",
     "lint": "eslint .",
