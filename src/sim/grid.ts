@@ -70,11 +70,15 @@ export interface Grid {
   waterCount: number;
 }
 
-/** Priority bonus when several bodies cover the same cell: the Dannegracht wins ties. */
+/**
+ * Priority bonus when several bodies cover the same cell. Where the Dannegracht runs into a
+ * river the river is physically there, so the rivers win: otherwise the overlap would become
+ * a shallow Dannegracht strip inside the much deeper ARK or Vecht.
+ */
 const KIND_BONUS: Record<WaterBodyKind, number> = {
-  dannegracht: 0.3,
-  vecht: 0.1,
-  ark: 0.05,
+  ark: 0.3,
+  vecht: 0.2,
+  dannegracht: 0.1,
   other: 0,
 };
 
