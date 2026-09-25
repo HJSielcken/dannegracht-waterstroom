@@ -5,6 +5,7 @@
 
 import type { LatLon, Probe, Scene, Structure, WaterBody } from '../types';
 import { bufferCenterline } from './buffer';
+import { toLatLon, toMetric } from './project';
 
 /** Origin of the local metric frame: near the Dannegracht, close to Brugstraat. */
 export const FALLBACK_ORIGIN: LatLon = { lat: 52.1732, lon: 4.9985 };
@@ -35,6 +36,28 @@ const ARK_CENTERLINE: LatLon[] = [
   { lat: 52.173, lon: 4.9935 }, // = Danne junction point above
   { lat: 52.168, lon: 4.9938 },
 ];
+
+/**
+ * How far the Danne polygon runs on past each river's centerline, so the schematic
+ * water bodies clearly overlap instead of only touching at the junction. Both stay
+ * inside the far bank (Vecht half-width 12.5 m, ARK half-width 55 m).
+ */
+const DANNE_OVERLAP_VECHT_M = 10;
+const DANNE_OVERLAP_ARK_M = 45;
+
+/** Prolongs a polyline straight on at both ends by the given distances (metres). */
+function extendPolyline(line: LatLon[], startM: number, endM: number): LatLon[] {
+  const pts = line.map((p) => toMetric(p, FALLBACK_ORIGIN));
+  const prolong = (from: { x: number; y: number }, to: { x: number; y: number }, d: number) => {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    return toLatLon(
+      { x: to.x + ((to.x - from.x) / len) * d, y: to.y + ((to.y - from.y) / len) * d },
+      FALLBACK_ORIGIN,
+    );
+  };
+  const n = pts.length;
+  return [prolong(pts[1]!, pts[0]!, startM), ...line, prolong(pts[n - 2]!, pts[n - 1]!, endM)];
+}
 
 // ---------------------------------------------------------------------------
 // Widths / depths (see RESEARCH.md)
@@ -174,7 +197,7 @@ export function fallbackScene(): Scene {
         'dannegracht',
         'dannegracht',
         'Dannegracht',
-        DANNE_CENTERLINE,
+        extendPolyline(DANNE_CENTERLINE, DANNE_OVERLAP_VECHT_M, DANNE_OVERLAP_ARK_M),
         DANNE_HALF_WIDTH_M,
         DANNE_DEPTH_M,
       ),
