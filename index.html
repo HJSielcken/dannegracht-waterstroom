@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Simulatie van de waterstroom in de Dannegracht (Breukelen) tussen de Vecht en het Amsterdam-Rijnkanaal."
+    />
+    <title>Dannegracht waterstroom</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <header class="sidebar__head">
+          <h1>Dannegracht</h1>
+          <p class="sub">Waterstroom tussen de Vecht en het Amsterdam-Rijnkanaal</p>
+          <p class="status" id="status">Laden…</p>
+        </header>
+
+        <section class="card">
+          <h2>Meetpunten</h2>
+          <p class="hint">Klik op het water om een meetpunt toe te voegen.</p>
+          <form id="geocode-form" class="row">
+            <input
+              id="geocode-input"
+              type="search"
+              placeholder="Adres, bv. Brugstraat 1 Breukelen"
+            />
+            <button type="submit">Zoek</button>
+          </form>
+          <div id="probes" class="probes"></div>
+        </section>
+
+        <section class="card">
+          <h2>Waterstanden <small>(m NAP)</small></h2>
+          <label class="slider">
+            <span>Vecht</span>
+            <input id="level-vecht" type="range" min="-0.8" max="0.2" step="0.005" />
+            <output id="level-vecht-out"></output>
+          </label>
+          <label class="slider">
+            <span>Amsterdam-Rijnkanaal</span>
+            <input id="level-ark" type="range" min="-0.8" max="0.2" step="0.005" />
+            <output id="level-ark-out"></output>
+          </label>
+          <div class="row">
+            <button id="levels-live" type="button">Live peilen ophalen</button>
+            <button id="levels-swap" type="button">Omdraaien</button>
+          </div>
+          <p class="hint" id="levels-source"></p>
+        </section>
+
+        <section class="card">
+          <h2>Boten</h2>
+          <div class="row">
+            <select id="boat-preset"></select>
+            <select id="boat-route">
+              <option value="v2a">Vecht → ARK</option>
+              <option value="a2v">ARK → Vecht</option>
+            </select>
+          </div>
+          <label class="slider">
+            <span>Snelheid</span>
+            <input id="boat-speed" type="range" min="0.5" max="4" step="0.1" value="1.7" />
+            <output id="boat-speed-out"></output>
+          </label>
+          <div class="row">
+            <button id="boat-launch" type="button">Laat varen</button>
+            <button id="boat-clear" type="button">Wis boten</button>
+          </div>
+          <p class="hint" id="ais-status"></p>
+          <ul id="boat-list" class="boats"></ul>
+        </section>
+
+        <section class="card">
+          <h2>Simulatie</h2>
+          <div class="row">
+            <button id="run" type="button">Pauze</button>
+            <label class="check"><input id="show-arrows" type="checkbox" checked /> pijlen</label>
+            <label class="check"
+              ><input id="show-particles" type="checkbox" checked /> deeltjes</label
+            >
+            <label class="check"
+              ><input id="show-tiles" type="checkbox" checked /> achtergrondkaart</label
+            >
+          </div>
+          <label class="slider">
+            <span>Tijdversnelling</span>
+            <input id="time-scale" type="range" min="1" max="20" step="1" value="1" />
+            <output id="time-scale-out"></output>
+          </label>
+          <p class="hint" id="sim-time"></p>
+        </section>
+
+        <footer class="hint">
+          Schematisch model (2D ondiepwatervergelijkingen). Uitkomsten zijn indicatief. Kaartdata ©
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers.
+        </footer>
+      </aside>
+      <main id="map" class="map"></main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
