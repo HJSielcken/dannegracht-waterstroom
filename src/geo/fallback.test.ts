@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LatLon, Vec2 } from '../types';
-import { fallbackScene } from './fallback';
+import { ARK_ROUTE, fallbackScene } from './fallback';
 import { toMetric } from './project';
 
 function pointInRing(p: Vec2, ring: Vec2[]): boolean {
@@ -130,5 +130,12 @@ describe('fallbackScene', () => {
       const inside = danne.filter((p) => pointInRing(p, riverRing)).length;
       expect(inside, river).toBeGreaterThanOrEqual(4);
     }
+  });
+
+  it('keeps the ARK boat route inside the ARK', () => {
+    const origin = scene.origin;
+    const ark = scene.waterBodies.find((w) => w.kind === 'ark')!;
+    const arkRing = ark.rings[0]!.map((p) => toMetric(p, origin));
+    for (const p of ARK_ROUTE) expect(pointInRing(toMetric(p, origin), arkRing)).toBe(true);
   });
 });
