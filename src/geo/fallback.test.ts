@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { LatLon, Vec2 } from '../types';
 import { ARK_ROUTE, fallbackScene } from './fallback';
-import { toMetric } from './project';
+import { buildGrid, KIND_DANNEGRACHT } from '../sim/grid';
+import { projectScene, toMetric } from './project';
 
 function pointInRing(p: Vec2, ring: Vec2[]): boolean {
   let inside = false;
@@ -99,6 +100,16 @@ describe('fallbackScene', () => {
         'dannegracht-vecht-mouth',
       ].sort(),
     );
+  });
+
+  it('puts the Dannegracht probes in Dannegracht cells, not in the Vecht or ARK', () => {
+    const grid = buildGrid(projectScene(scene), { cellSizeM: 3 });
+    for (const probe of scene.probes.filter((p) => !p.pinned)) {
+      const m = toMetric(probe.position, scene.origin);
+      const i = Math.floor((m.x - grid.originX) / grid.dx);
+      const j = Math.floor((m.y - grid.originY) / grid.dx);
+      expect(grid.kind[j * grid.nx + i], probe.id).toBe(KIND_DANNEGRACHT);
+    }
   });
 
   it('includes researched structures without inventing a weir or culvert', () => {

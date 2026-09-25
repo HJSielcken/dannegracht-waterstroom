@@ -9,6 +9,7 @@ import { geocode } from './geo/geocode';
 import { loadSceneFromOsm } from './geo/overpass';
 import { projectScene, toLatLon, toMetric } from './geo/project';
 import { DEFAULT_LEVELS, fetchLevels } from './levels/levels';
+import { KIND_DANNEGRACHT } from './sim/grid';
 import type {
   Boat,
   BoundaryLevels,
@@ -282,12 +283,14 @@ function startWorker(): void {
     const msg = e.data;
     switch (msg.type) {
       case 'ready':
+        gridKind = msg.kind;
+        defaultsSnapped = false;
         status.textContent = `Geometrie: ${scene.source === 'osm' ? 'OpenStreetMap' : 'ingebouwde schets'} · rooster ${msg.nx} × ${msg.ny} cellen van ${config.cellSizeM} m`;
         send({ type: 'run', running });
         break;
       case 'field':
         flowLayer.setField(msg.field);
-        snapPinnedProbe(msg.field);
+        snapProbes(msg.field);
         $('sim-time').textContent = `Gesimuleerde tijd: ${formatDuration(msg.field.timeS)}`;
         break;
       case 'samples':
@@ -307,35 +310,67 @@ function startWorker(): void {
   send({ type: 'init', scene: projectScene(sceneForSim()), config, levels });
 }
 
-/** Address of the pinned probe; the probe itself sits on the nearest water. */
+/** Address of the pinned probe; the probe itself sits on the nearest Dannegracht water. */
 let pinnedAddress = probes.find((p) => p.id === PINNED_PROBE_ID)?.position ?? null;
 let pinnedSnapped = false;
+/** Water body kind per grid cell of the current simulation (from the worker's 'ready'). */
+let gridKind: Int8Array | null = null;
+let defaultsSnapped = false;
+/** Default probes that must measure the gracht itself, not the Vecht or the ARK. */
+const GRACHT_PROBE_IDS = new Set(
+  scene.probes.filter((p) => p.id !== PINNED_PROBE_ID).map((p) => p.id),
+);
 
-/** Move the pinned probe from the (on-land) address to the nearest wet cell. */
-function snapPinnedProbe(field: FlowField): void {
-  const pinned = probes.find((p) => p.id === PINNED_PROBE_ID);
-  if (pinnedSnapped || !pinned || !pinnedAddress) return;
-  pinnedSnapped = true;
-  const a = project(pinnedAddress);
-  let best: Vec2 | null = null;
-  let bestD = 80; // metres; beyond this the address is not really at the gracht
+/** Nearest wet Dannegracht cell centre within maxM of `a`, or null. */
+function nearestGrachtCell(field: FlowField, a: Vec2, maxM: number): { p: Vec2; d: number } | null {
+  if (!gridKind || gridKind.length !== field.nx * field.ny) return null;
+  let best: { p: Vec2; d: number } | null = null;
   for (let j = 0; j < field.ny; j++) {
     for (let i = 0; i < field.nx; i++) {
-      if (!field.wet[j * field.nx + i]) continue;
+      const c = j * field.nx + i;
+      if (!field.wet[c] || gridKind[c] !== KIND_DANNEGRACHT) continue;
       const x = field.originX + (i + 0.5) * field.cellSizeM;
       const y = field.originY + (j + 0.5) * field.cellSizeM;
       const d = Math.hypot(x - a.x, y - a.y);
-      if (d < bestD) {
-        bestD = d;
-        best = { x, y };
+      if (d < maxM && (!best || d < best.d)) best = { p: { x, y }, d };
+    }
+  }
+  return best;
+}
+
+/**
+ * Keep the fixed probes on the gracht: the pinned probe moves from its (on-land) address to
+ * the nearest Dannegracht cell, and the other default probes move there when they fall on
+ * land or in a river (e.g. with live OSM geometry, which differs from the fallback sketch).
+ * Only Dannegracht cells count, so an address near the Vecht does not end up measuring it.
+ */
+function snapProbes(field: FlowField): void {
+  if (!gridKind) return;
+  let moved = false;
+  const pinned = probes.find((p) => p.id === PINNED_PROBE_ID);
+  if (!pinnedSnapped && pinned && pinnedAddress) {
+    pinnedSnapped = true;
+    // Beyond 80 m the address is not really at the gracht.
+    const hit = nearestGrachtCell(field, project(pinnedAddress), 80);
+    if (hit) {
+      pinned.position = unproject(hit.p);
+      pinned.name = `Brugstraat 10e (water op ${hit.d.toFixed(0)} m)`;
+      panel.rename(pinned);
+      moved = true;
+    }
+  }
+  if (!defaultsSnapped) {
+    defaultsSnapped = true;
+    for (const probe of probes) {
+      if (!GRACHT_PROBE_IDS.has(probe.id)) continue;
+      const hit = nearestGrachtCell(field, project(probe.position), 150);
+      if (hit && hit.d > 0.75 * field.cellSizeM) {
+        probe.position = unproject(hit.p);
+        moved = true;
       }
     }
   }
-  if (!best) return;
-  pinned.position = unproject(best);
-  pinned.name = `Brugstraat 10e (water op ${bestD.toFixed(0)} m)`;
-  panel.rename(pinned);
-  drawProbes();
+  if (moved) drawProbes();
 }
 
 let pendingSample: { id: number; probes: Probe[] } | null = null;

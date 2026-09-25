@@ -182,7 +182,13 @@ export type SimRequest =
   | { type: 'sample'; requestId: number; points: Vec2[] };
 
 export type SimResponse =
-  | { type: 'ready'; nx: number; ny: number }
+  | {
+      type: 'ready';
+      nx: number;
+      ny: number;
+      /** Water body kind code per cell (see KIND_CODES in src/sim/grid.ts), -1 = land. */
+      kind: Int8Array;
+    }
   | { type: 'field'; field: FlowField }
   | { type: 'samples'; requestId: number; samples: FlowSample[] }
   | { type: 'error'; message: string };
