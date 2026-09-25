@@ -11,6 +11,8 @@ Browser-simulatie van de waterstroom in de **Dannegracht in Breukelen**, tussen 
 
 ## Starten
 
+Vereist Node.js 24 (LTS); met [nvm](https://github.com/nvm-sh/nvm) volstaat `nvm use`.
+
 ```bash
 npm ci
 npm run dev

@@ -29,7 +29,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/leaflet": "^1.9.22",
-    "@types/node": "^26.6.2",
+    "@types/node": "^24.13.6",
     "eslint": "^10.11.0",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3",
@@ -38,5 +38,8 @@
     "vitest": "^5.0.2"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  }
 }
