@@ -62,6 +62,26 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 2. Zet de proxy-URL in `.env` als `VITE_AIS_PROXY_URL` (zie `.env.example`), of als
    repository-variabele `VITE_AIS_PROXY_URL` voor de GitHub Pages-build.
 
+## Docker
+
+De GitHub Actions-workflow `.github/workflows/docker.yml` bouwt bij elke push naar `main` (en bij
+tags `v*`) een image voor `linux/amd64` en `linux/arm64` en zet het op Docker Hub. Stel daarvoor in
+de repository-instellingen in:
+
+- secret `DOCKERHUB_USERNAME` – je Docker Hub-gebruikersnaam
+- secret `DOCKERHUB_TOKEN` – een Docker Hub access token (Account settings → Personal access tokens)
+- optioneel variabele `DOCKER_IMAGE` – imagenaam, standaard `<gebruikersnaam>/dannegracht-waterstroom`
+- optioneel variabele `VITE_AIS_PROXY_URL` – wordt bij het bouwen in de bundel gezet
+
+Draaien met Docker Compose (standaard op poort 8080):
+
+```bash
+docker compose pull && docker compose up -d   # image van Docker Hub
+docker compose up -d --build                  # of lokaal bouwen
+```
+
+Pas `DOCKER_IMAGE`, `DOCKER_TAG` en `PORT` aan via een `.env`-bestand als dat nodig is.
+
 ## Ontwikkelen
 
 ```bash
