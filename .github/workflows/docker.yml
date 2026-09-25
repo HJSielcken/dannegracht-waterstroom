@@ -22,6 +22,8 @@ env:
 
 jobs:
   build-and-push:
+    # On pull requests this only test-builds the image; nothing is pushed.
+    name: ${{ github.event_name == 'pull_request' && 'Build image (no push)' || 'Build and push image' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
