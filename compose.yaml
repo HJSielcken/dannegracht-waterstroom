@@ -1,0 +1,10 @@
+services:
+  web:
+    image: ${DOCKER_IMAGE:-hjsielcken/dannegracht-waterstroom}:${DOCKER_TAG:-latest}
+    build:
+      context: .
+      args:
+        VITE_AIS_PROXY_URL: ${VITE_AIS_PROXY_URL:-}
+    ports:
+      - '${PORT:-8533}:80'
+    restart: unless-stopped
