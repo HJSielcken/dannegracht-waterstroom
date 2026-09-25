@@ -5,6 +5,7 @@ import type {
   FlowField,
   FlowSample,
   MetricScene,
+  RiverCurrents,
   SimBoat,
   SimConfig,
   Vec2,
@@ -27,6 +28,7 @@ export class Simulation {
   private scene: MetricScene;
   private config: SimConfig;
   private levels: BoundaryLevels;
+  private currents: RiverCurrents;
   private boats: SimBoat[] = [];
   private readonly solverParams: Partial<SolverParams>;
   grid: Grid;
@@ -37,20 +39,24 @@ export class Simulation {
     config: SimConfig,
     levels: BoundaryLevels,
     solverParams: Partial<SolverParams> = {},
+    currents: RiverCurrents = { vechtMs: 0, arkMs: 0 },
   ) {
     this.scene = scene;
     this.config = { ...config };
     this.levels = { ...levels };
+    this.currents = { ...currents };
     this.solverParams = solverParams;
     this.grid = buildGrid(scene, { cellSizeM: config.cellSizeM });
     this.solver = this.makeSolver();
   }
 
   private makeSolver(): ShallowWaterSolver {
-    const s = new ShallowWaterSolver(this.grid, this.levels, {
-      ...this.solverParams,
-      manningN: this.config.manningN,
-    });
+    const s = new ShallowWaterSolver(
+      this.grid,
+      this.levels,
+      { ...this.solverParams, manningN: this.config.manningN },
+      this.currents,
+    );
     s.boats.setBoats(this.boats, s.timeS);
     return s;
   }
@@ -66,6 +72,12 @@ export class Simulation {
   setLevels(levels: BoundaryLevels): void {
     this.levels = { ...levels };
     this.solver.setLevels(levels);
+  }
+
+  /** Set the background currents of the Vecht and the ARK (m/s, positive = northward). */
+  setCurrents(currents: RiverCurrents): void {
+    this.currents = { ...currents };
+    this.solver.setCurrents(currents);
   }
 
   /** Update configuration. A new cell size rebuilds the grid and restarts the flow field. */

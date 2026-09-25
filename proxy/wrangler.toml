@@ -26,9 +26,12 @@ AIS_BBOX_EAST = "5.03"
 # before relying on them, and correct here if wrong. The worker falls back
 # to DEFAULT_LEVELS-equivalent output when a fetch/parse fails.
 #
-# RWS Waterwebservices/DDL location code for a gauge on the ARK near
+# RWS Waterwebservices location code for a gauge on the ARK near
 # Maarssen/Breukelen (Grootheid WATHTE = waterhoogte, cm t.o.v. NAP).
-RWS_ARK_LOCATION_CODE = "MAASS"
+# Empty until confirmed: the new API (ddapi20) uses lowercase codes such as
+# "ameland.nes"; the old DDL-style guess "MAASS" does not fit that format.
+# While empty, /levels uses the ARK streefpeil (NAP -0.40 m).
+RWS_ARK_LOCATION_CODE = ""
 # HDSR Lizard timeseries UUID for a Vecht gauge at/near Breukelen.
 HDSR_VECHT_TIMESERIES_UUID = ""
 

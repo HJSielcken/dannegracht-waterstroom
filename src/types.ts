@@ -127,6 +127,15 @@ export interface BoundaryLevels {
   arkNapM: number;
 }
 
+/**
+ * Background current of the two rivers in m/s, positive = northward. Both flow north through
+ * Breukelen: the Vecht from Utrecht to Muiden, the ARK from the Lek towards Amsterdam.
+ */
+export interface RiverCurrents {
+  vechtMs: number;
+  arkMs: number;
+}
+
 export interface SimConfig {
   /** Grid cell size in metres. */
   cellSizeM: number;
@@ -174,15 +183,28 @@ export interface FlowField {
 // Worker protocol (main thread <-> src/sim/worker.ts).
 
 export type SimRequest =
-  | { type: 'init'; scene: MetricScene; config: SimConfig; levels: BoundaryLevels }
+  | {
+      type: 'init';
+      scene: MetricScene;
+      config: SimConfig;
+      levels: BoundaryLevels;
+      currents?: RiverCurrents;
+    }
   | { type: 'setLevels'; levels: BoundaryLevels }
+  | { type: 'setCurrents'; currents: RiverCurrents }
   | { type: 'setConfig'; config: Partial<SimConfig> }
   | { type: 'setBoats'; boats: SimBoat[] }
   | { type: 'run'; running: boolean }
   | { type: 'sample'; requestId: number; points: Vec2[] };
 
 export type SimResponse =
-  | { type: 'ready'; nx: number; ny: number }
+  | {
+      type: 'ready';
+      nx: number;
+      ny: number;
+      /** Water body kind code per cell (see KIND_CODES in src/sim/grid.ts), -1 = land. */
+      kind: Int8Array;
+    }
   | { type: 'field'; field: FlowField }
   | { type: 'samples'; requestId: number; samples: FlowSample[] }
   | { type: 'error'; message: string };

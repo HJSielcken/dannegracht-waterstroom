@@ -36,6 +36,12 @@ function postField(): void {
   lastField = performance.now();
 }
 
+function postReady(): void {
+  if (!sim) return;
+  const { nx, ny, kind } = sim.grid;
+  post({ type: 'ready', nx, ny, kind: kind.slice() });
+}
+
 function tick(): void {
   if (!sim) return;
   const t = performance.now();
@@ -73,8 +79,8 @@ ctx.onmessage = (ev: MessageEvent<SimRequest>) => {
       case 'init': {
         const wasRunning = timer !== null;
         stop();
-        sim = new Simulation(msg.scene, msg.config, msg.levels);
-        post({ type: 'ready', nx: sim.grid.nx, ny: sim.grid.ny });
+        sim = new Simulation(msg.scene, msg.config, msg.levels, {}, msg.currents);
+        postReady();
         postField();
         if (wasRunning) start();
         break;
@@ -82,12 +88,15 @@ ctx.onmessage = (ev: MessageEvent<SimRequest>) => {
       case 'setLevels':
         sim?.setLevels(msg.levels);
         break;
+      case 'setCurrents':
+        sim?.setCurrents(msg.currents);
+        break;
       case 'setConfig': {
         if (!sim) break;
         const before = sim.getConfig().cellSizeM;
         sim.setConfig(msg.config);
         if (sim.getConfig().cellSizeM !== before) {
-          post({ type: 'ready', nx: sim.grid.nx, ny: sim.grid.ny });
+          postReady();
           postField();
         }
         break;

@@ -49,6 +49,21 @@
             <button id="levels-swap" type="button">Omdraaien</button>
           </div>
           <p class="hint" id="levels-source"></p>
+          <h3>Stroming van de rivieren <small>(cm/s, + = naar het noorden)</small></h3>
+          <label class="slider">
+            <span>Vecht</span>
+            <input id="current-vecht" type="range" min="-10" max="15" step="0.5" />
+            <output id="current-vecht-out"></output>
+          </label>
+          <label class="slider">
+            <span>Amsterdam-Rijnkanaal</span>
+            <input id="current-ark" type="range" min="-10" max="15" step="0.5" />
+            <output id="current-ark-out"></output>
+          </label>
+          <p class="hint">
+            Beide stromen naar het noorden. Standaard: Vecht 5 cm/s (circa 4 m³/s via de
+            Weerdsluis), ARK 2 cm/s (circa 13 m³/s inlaat bij Wijk bij Duurstede en Vreeswijk).
+          </p>
           <label class="check">
             <input id="lock-open" type="checkbox" checked /> Schutsluis bij de Vecht staat open
           </label>

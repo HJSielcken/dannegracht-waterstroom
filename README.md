@@ -33,7 +33,11 @@ Open daarna de URL die Vite toont. Alles rekent in de browser; er is geen server
 
 **Model.** Het water wordt gemodelleerd met de diepte-gemiddelde ondiepwatervergelijkingen op een
 rooster van 3 m. De Vecht en het ARK worden op afstand van de gracht op hun ingestelde peil gehouden;
-het peilverschil drijft de stroming door de Dannegracht. Boten zijn bewegende drukvelden ter grootte
+het peilverschil drijft de stroming door de Dannegracht. Beide rivieren hebben daarnaast een eigen
+stroming naar het noorden (instelbaar): standaard **Vecht 5 cm/s** (ca. 4 m³/s, het streefdebiet via
+de Weerdsluis in Utrecht) en **ARK 2 cm/s** (ca. 13 m³/s, de gemiddelde inlaat bij Wijk bij Duurstede
+en Vreeswijk). De stroming volgt de bochten van de rivier (potentiaalstroming) en komt binnen via
+open randen aan de uiteinden. Boten zijn bewegende drukvelden ter grootte
 van de romp. Die geven de bekende effecten: retourstroom langs de romp, waterspiegeldaling en opstuwing
 voor de boeg.
 
@@ -54,7 +58,11 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   proxy; de meetlocaties van RWS en HDSR moeten nog worden ingesteld in `proxy/wrangler.toml`.
 - **Brugstraat 10e** wordt in de browser opgezocht via PDOK en naar het dichtstbijzijnde water verplaatst.
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
-- Niet gemodelleerd: de eigen afvoer van de Vecht, wind, korte scheepsgolven, schroefwater.
+- **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
+  spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.
+- **Snelheid in de gracht** is bij een peilverschil ongeveer de helft van wat de Manning-formule geeft:
+  de smalle, schuin liggende gracht krijgt op het rooster trapjesranden die extra weerstand geven.
+- Niet gemodelleerd: wind, korte scheepsgolven, schroefwater.
 
 ## Live AIS en waterstanden
 

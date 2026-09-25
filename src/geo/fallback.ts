@@ -43,7 +43,7 @@ const DANNE_CENTERLINE: LatLon[] = [
   { lat: 52.17136, lon: 5.00217 },
   { lat: 52.17118, lon: 4.99962 },
   { lat: 52.17107, lon: 4.99731 },
-  { lat: 52.17098, lon: 4.99513 }, // ARK east bank
+  { lat: 52.17098, lon: 4.99513 }, // ~30 m into the ARK, past its east bank
 ];
 
 /** Amsterdam-Rijnkanaal west of Breukelen centre, north to south, running slightly NNW-SSE. */
@@ -124,11 +124,17 @@ function waterBody(
 // Structures (see RESEARCH.md for sourcing/confidence of each)
 // ---------------------------------------------------------------------------
 
+const DANNE_METRIC = DANNE_CENTERLINE.map((p) => toMetric(p, FALLBACK_ORIGIN));
+const DANNE_SEGMENTS = DANNE_METRIC.slice(1).map((b, i) =>
+  Math.hypot(b.x - DANNE_METRIC[i]!.x, b.y - DANNE_METRIC[i]!.y),
+);
+const DANNE_LENGTH_M = DANNE_SEGMENTS.reduce((a, b) => a + b, 0);
+
 /** Point at fraction t (0 = Vecht, 1 = ARK) of the length along the Danne centerline. */
 function alongDanne(t: number): LatLon {
-  const pts = DANNE_CENTERLINE.map((p) => toMetric(p, FALLBACK_ORIGIN));
-  const seg = pts.slice(1).map((b, i) => Math.hypot(b.x - pts[i]!.x, b.y - pts[i]!.y));
-  let remaining = t * seg.reduce((a, b) => a + b, 0);
+  const pts = DANNE_METRIC;
+  const seg = DANNE_SEGMENTS;
+  let remaining = t * DANNE_LENGTH_M;
   for (let i = 0; i < seg.length; i++) {
     const len = seg[i]!;
     if (remaining <= len || i === seg.length - 1) {
@@ -209,14 +215,18 @@ export const FALLBACK_PROBES: Probe[] = [
     pinned: true,
   },
   {
+    // The centerline starts on the Vecht centerline; its bank is ~15 m further, so this
+    // sits ~15 m inside the gracht.
     id: 'dannegracht-vecht-mouth',
     name: 'Dannegracht bij de Vecht',
-    position: alongDanne(0.04),
+    position: alongDanne(30 / DANNE_LENGTH_M),
   },
   {
+    // The centerline ends ~30 m inside the ARK, so this sits ~20 m inside the gracht.
+    // (At 97 % of the length the probe used to measure the ARK itself.)
     id: 'dannegracht-ark-mouth',
     name: 'Dannegracht bij het Amsterdam-Rijnkanaal',
-    position: alongDanne(0.97),
+    position: alongDanne(1 - 50 / DANNE_LENGTH_M),
   },
   {
     id: 'dannegracht-midway',

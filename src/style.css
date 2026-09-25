@@ -94,7 +94,13 @@ body {
   font-size: 15px;
 }
 
-.card h2 small {
+.card h3 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+}
+
+.card h2 small,
+.card h3 small {
   color: var(--muted);
   font-weight: normal;
 }
