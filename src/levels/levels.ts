@@ -28,6 +28,7 @@
 //    (locks, gemalen, peilvakken) through this API. NOT VERIFIED: the exact
 //    Lizard timeseries UUID for a Vecht gauge at/near Breukelen — same
 //    env-var approach in the proxy.
+import { proxyHttpBase } from '../proxyUrl';
 import type { BoundaryLevels } from '../types';
 
 /**
@@ -60,7 +61,7 @@ export interface LevelsResult {
 }
 
 export interface FetchLevelsOptions {
-  /** Base URL of the proxy, e.g. https://ais-proxy.example.workers.dev. Defaults to `import.meta.env.VITE_AIS_PROXY_URL` with the trailing `/ais` (if present) stripped. */
+  /** Base URL of the proxy, e.g. https://ais-proxy.example.workers.dev. Defaults to `import.meta.env.VITE_AIS_PROXY_URL` (absolute or a same-origin path) with the trailing `/ais` stripped. */
   baseUrl?: string;
   /** Fetch implementation, for tests. Defaults to globalThis.fetch. */
   fetchImpl?: typeof fetch;
@@ -73,10 +74,7 @@ function readDefaultBaseUrl(): string | undefined {
     const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
     const proxyUrl = env?.VITE_AIS_PROXY_URL;
     if (!proxyUrl) return undefined;
-    return proxyUrl
-      .replace(/^wss:/, 'https:')
-      .replace(/^ws:/, 'http:')
-      .replace(/\/ais\/?$/, '');
+    return proxyHttpBase(proxyUrl) ?? undefined;
   } catch {
     return undefined;
   }

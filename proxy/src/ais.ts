@@ -10,15 +10,7 @@
 // src/boats/aisMessages.ts, so both sides speak the same aisstream.io wire
 // format).
 import type { Env } from './env';
-
-const AISSTREAM_URL = 'wss://stream.aisstream.io/v0/stream';
-
-const RELEVANT_MESSAGE_TYPES = [
-  'PositionReport',
-  'ShipStaticData',
-  'StandardClassBPositionReport',
-  'StaticDataReport',
-];
+import { AISSTREAM_URL, subscriptionMessage } from './subscription';
 
 export async function handleAisWebSocket(request: Request, env: Env): Promise<Response> {
   if (request.headers.get('Upgrade') !== 'websocket') {
@@ -58,20 +50,9 @@ async function connectUpstreamAndRelay(clientSocket: WebSocket, env: Env): Promi
   }
   upstream.accept();
 
-  const bbox: [[number, number], [number, number]] = [
-    [Number(env.AIS_BBOX_SOUTH), Number(env.AIS_BBOX_WEST)],
-    [Number(env.AIS_BBOX_NORTH), Number(env.AIS_BBOX_EAST)],
-  ];
-
   // The subscription message must be sent within 3 seconds of the socket
   // opening, per aisstream.io's docs.
-  upstream.send(
-    JSON.stringify({
-      APIKey: env.AISSTREAM_API_KEY,
-      BoundingBoxes: [bbox],
-      FilterMessageTypes: RELEVANT_MESSAGE_TYPES,
-    }),
-  );
+  upstream.send(subscriptionMessage(env));
 
   upstream.addEventListener('message', (event: MessageEvent) => {
     try {

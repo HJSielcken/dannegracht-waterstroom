@@ -9,16 +9,25 @@ RUN npm ci
 
 COPY . .
 
-# Build-time setting: Vite bakes it into the bundle. Empty disables live AIS and water levels.
-ARG VITE_AIS_PROXY_URL=
+# The front end talks to the /ais and /levels endpoints of server/ on the same origin.
+ARG VITE_AIS_PROXY_URL=/ais
 ENV VITE_AIS_PROXY_URL=${VITE_AIS_PROXY_URL}
 RUN npm run build
 
-# --- Runtime: serve dist/ with nginx ---
-FROM nginx:1.29-alpine
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+# --- Runtime: one Node process serves the app, /levels and /ais ---
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production PORT=8080
 
-EXPOSE 80
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY server ./server
+COPY proxy/src ./proxy/src
+COPY --from=build /app/dist ./dist
+
+USER node
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1
+  CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1
+CMD ["node", "server/index.ts"]
