@@ -209,14 +209,14 @@ button:hover {
   padding: 8px;
 }
 
-.probe--pinned {
-  border-color: var(--accent);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
 .probe header {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.probe__badge {
+  flex: none;
 }
 
 .probe__name {
@@ -228,6 +228,7 @@ button:hover {
 }
 
 .probe__remove {
+  margin-left: auto;
   border: 0;
   background: none;
   padding: 0 4px;
@@ -381,18 +382,20 @@ button:hover {
 }
 
 .probe-marker {
-  width: 14px;
-  height: 14px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 2px solid #fff;
   background: var(--accent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
-}
-
-.probe-marker--pinned {
-  width: 18px;
-  height: 18px;
-  background: #e67e22;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 800px) {
@@ -410,4 +413,35 @@ button:hover {
   .resizer {
     display: none;
   }
+}
+
+.inspect {
+  min-width: 170px;
+}
+
+.inspect__coord {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect__speed {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 4px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect__speed--dry {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.inspect__detail {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inspect__add {
+  margin-top: 8px;
 }

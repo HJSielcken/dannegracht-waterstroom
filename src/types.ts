@@ -47,8 +47,8 @@ export interface Probe {
   id: string;
   name: string;
   position: LatLon;
-  /** The default probe (Brugstraat 10e) is pinned and cannot be removed. */
-  pinned?: boolean;
+  /** Short marker label (a number) shown on the map and in the probe panel. */
+  label?: string;
 }
 
 export interface Scene {
