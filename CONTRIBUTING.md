@@ -5,7 +5,7 @@
 - `main` is altijd deploybaar; er wordt niet direct op gepusht.
 - Werk op een feature-branch (`feat/...`, `fix/...`, `docs/...`) en open een pull request.
 - CI (format, lint, typecheck, tests, build) moet groen zijn voor een merge.
-- Merge bij voorkeur met *squash* of *rebase* zodat de historie lineair blijft.
+- Merge bij voorkeur met _squash_ of _rebase_ zodat de historie lineair blijft.
 
 ## Commits
 
