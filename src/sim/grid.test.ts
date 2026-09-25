@@ -134,4 +134,24 @@ describe('buildGrid', () => {
     expect(bridge.faceU[c + j]).toBeCloseTo(0.5);
     expect(connected(bridge, v, a)).toBe(true);
   });
+
+  it('lets the river win where the Dannegracht polygon overlaps it', () => {
+    const scene = channelScene();
+    // Prolong the channel 60 m into the ARK reservoir.
+    const danne = scene.waterBodies.find((w) => w.kind === 'dannegracht')!;
+    danne.rings = [
+      [
+        { x: 0, y: -5 },
+        { x: CHANNEL_LENGTH + 60, y: -5 },
+        { x: CHANNEL_LENGTH + 60, y: 5 },
+        { x: 0, y: 5 },
+      ],
+    ];
+    const g = buildGrid(scene, { cellSizeM: 3 });
+    const inOverlap = cellAt(g, { x: CHANNEL_LENGTH + 30, y: 0 });
+    const inChannel = cellAt(g, { x: CHANNEL_LENGTH / 2, y: 0 });
+    expect(g.kind[inOverlap]).toBe(KIND_ARK);
+    expect(g.zb[inOverlap]).toBeLessThan(g.zb[inChannel]!);
+    expect(g.kind[inChannel]).toBe(KIND_DANNEGRACHT);
+  });
 });

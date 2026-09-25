@@ -21,11 +21,12 @@ export interface BBox {
   east: number;
 }
 
+/** Area around the Dannegracht, wide enough to include the ARK west of Breukelen station. */
 export const JUNCTION_BBOX: BBox = {
-  south: 52.164,
-  west: 4.988,
-  north: 52.182,
-  east: 5.009,
+  south: 52.162,
+  west: 4.975,
+  north: 52.184,
+  east: 5.015,
 };
 
 const DEPTH_DEFAULTS_M: Record<WaterBodyKind, number> = {

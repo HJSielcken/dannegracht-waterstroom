@@ -3,6 +3,18 @@ import type { LatLon, Vec2 } from '../types';
 import { fallbackScene } from './fallback';
 import { toMetric } from './project';
 
+function pointInRing(p: Vec2, ring: Vec2[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i]!;
+    const b = ring[j]!;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
 function pointSegDist(p: Vec2, a: Vec2, b: Vec2): number {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
@@ -104,6 +116,19 @@ describe('fallbackScene', () => {
     for (const s of scene.structures) {
       const p = toMetric(s.position, origin);
       expect(ringMinDistToPoint(danneRing, p)).toBeLessThan(20);
+    }
+  });
+
+  it('runs the Dannegracht polygon well into both rivers so they visibly overlap', () => {
+    const origin = scene.origin;
+    const ring = (kind: string) =>
+      scene.waterBodies.find((w) => w.kind === kind)!.rings[0]!.map((p) => toMetric(p, origin));
+    const danne = ring('dannegracht');
+    for (const river of ['vecht', 'ark']) {
+      const riverRing = ring(river);
+      // Deeply overlapping: at least 4 of the Danne outline's corners lie inside the river.
+      const inside = danne.filter((p) => pointInRing(p, riverRing)).length;
+      expect(inside, river).toBeGreaterThanOrEqual(4);
     }
   });
 });

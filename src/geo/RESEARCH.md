@@ -120,3 +120,20 @@ Once this runs somewhere with real internet access, re-derive `fallback.ts`'s ce
 from actual Overpass `out geom` results for `waterway` ways named Vecht / Danne / Dannegracht
 and the ARK relation, and re-geocode Brugstraat 10e via PDOK, to replace the ESTIMATED
 coordinates with surveyed ones.
+
+## Update 2026-09-25: geometry traced from a map screenshot
+
+The first fallback centerlines were estimates and did not match the map: the ARK lay ~50 m too
+far west, the Vecht was a straight diagonal through the town, and the Danne ran along streets
+without water. The centerlines in `fallback.ts` are now traced from a user-supplied screenshot
+of the app over the OpenStreetMap basemap.
+
+- **Georeferencing:** the app's own markers (known coordinates) give 1 px = 1/41200 deg lon =
+  1/66750 deg lat. Check: Breukelen station (4.9906 E, Wikipedia) falls on its map label.
+  Estimated accuracy 10-20 m.
+- **ARK:** ~115 m wide, running slightly NNW-SSE west of the centre. VERIFIED against the basemap.
+- **Vecht:** along the Straatweg from the north-east, bending south-east at the centre, ~30 m
+  wide. VERIFIED against the basemap.
+- **Danne:** from the Vecht near Markt/Kerkvaart along the Stationsweg to the ARK.
+  UNVERIFIED-BUT-SOURCED: the gracht is too narrow to show at the traced zoom; the route follows
+  the Danne bridges listed at the Stationsweg. Needs confirmation on site or at higher zoom.
