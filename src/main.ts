@@ -128,38 +128,75 @@ function drawProbes(): void {
   panel.setProbes(probes);
 }
 
+const boatMarkers = new Map<string, { marker: L.Marker; box: number }>();
+/** Smallest on-screen boat size, so small boats stay visible when zoomed out. */
+const MIN_BOAT_PX = 26;
+
+/** Top-view boat outline pointing north; rotated to the course by the caller. */
+function boatSvg(b: Boat, lengthPx: number): string {
+  const widthPx = Math.max(lengthPx * 0.42, lengthPx * (b.beamM / b.lengthM));
+  const hull = b.source === 'ais' ? 'var(--boat-ais)' : 'var(--boat-virtual)';
+  return `<svg class="boat-icon__svg" viewBox="0 0 20 48" preserveAspectRatio="none"
+      width="${widthPx.toFixed(1)}" height="${lengthPx.toFixed(1)}">
+    <path d="M10 1 C16 9 18.5 17 18.5 28 L18.5 43 Q10 47.5 1.5 43 L1.5 28 C1.5 17 4 9 10 1 Z"
+      fill="${hull}" stroke="#fff" stroke-width="1.2" />
+    <rect x="5.5" y="20" width="9" height="13" rx="2" fill="#fff" opacity="0.85" />
+    <path d="M10 5 L10 16" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity="0.7" />
+  </svg>`;
+}
+
+/** Metres per screen pixel at the map centre. */
+function metresPerPixel(): number {
+  const c = map.getCenter();
+  const p = map.latLngToContainerPoint(c);
+  return c.distanceTo(map.containerPointToLatLng([p.x + 100, p.y])) / 100;
+}
+
 function drawBoats(boats: Boat[]): void {
-  boatLayer.clearLayers();
+  const mPerPx = metresPerPixel();
+  const seen = new Set<string>();
+  for (const b of boats) {
+    seen.add(b.id);
+    // True-to-scale when zoomed in, never smaller than MIN_BOAT_PX.
+    const lengthPx = Math.max(MIN_BOAT_PX, b.lengthM / mPerPx);
+    const box = Math.ceil(lengthPx * 1.1);
+    const makeIcon = () =>
+      L.divIcon({
+        className: 'boat-icon',
+        html: `<div class="boat-icon__rot">${boatSvg(b, lengthPx)}</div>`,
+        iconSize: [box, box],
+        iconAnchor: [box / 2, box / 2],
+      });
+    const pos: L.LatLngExpression = [b.position.lat, b.position.lon];
+    let entry = boatMarkers.get(b.id);
+    if (!entry) {
+      const marker = L.marker(pos, { icon: makeIcon(), keyboard: false, zIndexOffset: 1000 })
+        .bindTooltip('', { direction: 'top' })
+        .addTo(boatLayer);
+      entry = { marker, box };
+      boatMarkers.set(b.id, entry);
+    } else {
+      entry.marker.setLatLng(pos);
+      // Rebuild the icon only when its on-screen size changes (zoom), not on every tick.
+      if (entry.box !== box) {
+        entry.marker.setIcon(makeIcon());
+        entry.box = box;
+      }
+    }
+    const marker = entry.marker;
+    const rot = marker.getElement()?.querySelector<HTMLElement>('.boat-icon__rot');
+    if (rot) rot.style.transform = `rotate(${b.courseDeg.toFixed(1)}deg)`;
+    marker.setTooltipContent(boatLabel(b));
+  }
+  for (const [id, { marker }] of boatMarkers) {
+    if (seen.has(id)) continue;
+    marker.remove();
+    boatMarkers.delete(id);
+  }
+
   const list = $<HTMLUListElement>('boat-list');
   list.innerHTML = '';
   for (const b of boats) {
-    // Hull outline as a rotated rectangle in the metric frame.
-    const c = project(b.position);
-    const rad = (b.courseDeg * Math.PI) / 180;
-    const fwd = { x: Math.sin(rad), y: Math.cos(rad) };
-    const side = { x: fwd.y, y: -fwd.x };
-    const hl = b.lengthM / 2;
-    const hb = b.beamM / 2;
-    const corners = [
-      [hl, 0],
-      [hl * 0.6, hb],
-      [-hl, hb],
-      [-hl, -hb],
-      [hl * 0.6, -hb],
-    ].map(([a, s]) => {
-      const ll = unproject({
-        x: c.x + fwd.x * a! + side.x * s!,
-        y: c.y + fwd.y * a! + side.y * s!,
-      });
-      return [ll.lat, ll.lon] as [number, number];
-    });
-    L.polygon(corners, {
-      color: b.source === 'ais' ? '#8e44ad' : '#d35400',
-      weight: 1,
-      fillOpacity: 0.85,
-    })
-      .bindTooltip(boatLabel(b))
-      .addTo(boatLayer);
     const li = document.createElement('li');
     li.innerHTML = `<span></span><span></span>`;
     li.children[0]!.textContent = `${b.source === 'ais' ? 'AIS' : 'virtueel'} · ${b.name ?? b.id}`;
