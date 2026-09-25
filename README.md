@@ -11,11 +11,12 @@ Browser-simulatie van de waterstroom in de **Dannegracht in Breukelen**, tussen 
 
 ## Starten
 
-Vereist Node.js 24 (LTS); met [nvm](https://github.com/nvm-sh/nvm) volstaat `nvm use`.
+Vereist Node.js 26 (met [nvm](https://github.com/nvm-sh/nvm) volstaat `nvm use`) en
+[pnpm](https://pnpm.io/installation) (`npm install -g pnpm`; de versie staat in `packageManager`).
 
 ```bash
-npm ci
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Open daarna de URL die Vite toont. Alles rekent in de browser; er is geen server nodig.
@@ -27,10 +28,9 @@ Open daarna de URL die Vite toont. Alles rekent in de browser; er is geen server
 | `src/geo`    | Geometrie: live uit OpenStreetMap (Overpass), met een ingebouwde schets als reserve |
 | `src/sim`    | 2D-ondiepwatermodel in een Web Worker                                               |
 | `src/boats`  | AIS-client, schatting van waterverplaatsing en massa, virtuele boten                |
-| `src/levels` | Live waterstanden (via de proxy)                                                    |
+| `src/levels` | Live waterstanden (via `server/`)                                                   |
 | `src/ui`     | Kaartlaag met pijlen/deeltjes en het meetpuntenpaneel                               |
-| `proxy`      | Cloudflare Worker voor AIS en waterstanden (optioneel)                              |
-| `server`     | Node-server voor Docker: serveert de app plus `/levels` en `/ais`                   |
+| `server`     | Node-server: serveert de app plus `/levels` en `/ais`                               |
 
 **Model.** Het water wordt gemodelleerd met de diepte-gemiddelde ondiepwatervergelijkingen op een
 rooster van 3 m. De Vecht en het ARK worden op afstand van de gracht op hun ingestelde peil gehouden;
@@ -55,8 +55,8 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 - **Diepte en breedte van de gracht** zijn geschat (10 m breed, 1,8 m diep); zie `src/geo/RESEARCH.md`.
 - **De schutsluis** aan de Vecht-kant is een rijksmonument; of hij open of dicht staat is niet bekend.
   Bij een dichte sluis is er vrijwel geen doorstroming.
-- **Peilen.** Standaard staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen vereisen de
-  proxy; de meetlocaties van RWS en HDSR moeten nog worden ingesteld in `proxy/wrangler.toml`.
+- **Peilen.** Standaard staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen vereisen
+  `server/` met de meetlocaties van RWS en HDSR (zie [Docker](#docker)).
 - **Brugstraat 10e** wordt in de browser opgezocht via PDOK en naar het dichtstbijzijnde water verplaatst.
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
@@ -74,22 +74,18 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 
 ## Live AIS en waterstanden
 
-De browser haalt AIS en waterstanden via een proxy op (`/ais` en `/levels`). Die kan op twee manieren
-draaien:
-
-- **Samen met de app** (Docker, `npm start`): `server/` serveert de site én de proxy op hetzelfde
-  adres. Zie [Docker](#docker).
-- **Los als Cloudflare Worker** (voor GitHub Pages): zet de proxy op volgens
-  [`proxy/README.md`](proxy/README.md) en zet de proxy-URL in `.env` als `VITE_AIS_PROXY_URL` (zie
-  `.env.example`), of als repository-variabele `VITE_AIS_PROXY_URL` voor de GitHub Pages-build.
+De browser haalt AIS en waterstanden op bij `server/` (`/ais` en `/levels`), dat de site en beide
+endpoints op hetzelfde adres serveert (Docker of `pnpm start`, zie [Docker](#docker)). `pnpm run dev`
+start `server/` zelf op poort 8787 en stuurt `/ais` en `/levels` daarheen door; de variabelen komen
+uit `.env` (zie `.env.example`). De versie op GitHub Pages heeft geen server en dus geen live gegevens.
 
 Zonder meetpuntcodes (`RWS_ARK_LOCATION_CODE`, `HDSR_VECHT_TIMESERIES_UUID`) geeft `/levels` het
 streefpeil terug, met als bron `ark-fallback+vecht-fallback`.
 
 ## Docker
 
-Het image bevat één Node-proces (`server/`) dat de gebouwde site serveert en de proxy-endpoints
-`/levels` en `/ais` levert op hetzelfde adres; een aparte proxy of CORS-instelling is niet nodig.
+Het image bevat één Node-proces (`server/`) dat de gebouwde site serveert en de endpoints `/levels`
+en `/ais` levert op hetzelfde adres.
 
 Draaien met Docker Compose (poort 8533): zet in `compose.yaml` je aisstream.io-sleutel en de
 meetpuntcodes onder `environment` en start het image van Docker Hub:
@@ -105,9 +101,9 @@ docker compose pull && docker compose up -d
 | `HDSR_VECHT_TIMESERIES_UUID` | Lizard-tijdreeks van een Vecht-meetpunt (hdsr.lizard.net)     |
 
 Zet je ingevulde `compose.yaml` niet terug in git; de sleutel is geheim. Een image lokaal bouwen kan
-met `docker build -t hjsielcken/dannegracht-waterstroom .`.
+met `docker build -t pofsok/dannegracht-waterstroom .`.
 
-Zonder Docker: `npm run build && npm start` (poort 8080, zelfde variabelen), met
+Zonder Docker: `pnpm run build && pnpm start` (poort 8080, zelfde variabelen), met
 `VITE_AIS_PROXY_URL=/ais` tijdens de build.
 
 De GitHub Actions-workflow `.github/workflows/docker.yml` bouwt bij elke push naar `main` (en bij
@@ -121,7 +117,7 @@ wordt het image alleen gebouwd. Stel daarvoor in de repository-instellingen in:
 ## Ontwikkelen
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build
+pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build
 ```
 
 Zie [`CONTRIBUTING.md`](CONTRIBUTING.md) voor de branch- en commitconventies.

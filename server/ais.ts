@@ -1,10 +1,10 @@
-// Relays aisstream.io's WebSocket stream to the browser on /ais: the Node
-// counterpart of proxy/src/ais.ts. The API key stays on the server.
+// Relays aisstream.io's WebSocket stream to the browser on /ais. The API key
+// stays on the server.
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { Env } from '../proxy/src/env.ts';
-import { AISSTREAM_URL, subscriptionMessage } from '../proxy/src/subscription.ts';
+import type { Env } from './env.ts';
+import { AISSTREAM_URL, subscriptionMessage } from './subscription.ts';
 
 const wss = new WebSocketServer({ noServer: true });
 

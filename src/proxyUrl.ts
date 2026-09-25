@@ -1,6 +1,6 @@
-// VITE_AIS_PROXY_URL is either an absolute WebSocket URL of a separately
-// deployed proxy (wss://…workers.dev/ais) or a path such as `/ais` when the
-// app is served by server/ on the same origin. These helpers turn either
+// VITE_AIS_PROXY_URL is either an absolute WebSocket URL of server/ on another
+// host (wss://…/ais) or a path such as `/ais` when the app is served by
+// server/ on the same origin. These helpers turn either
 // form into the URLs the AIS and levels clients need.
 
 function currentPage(): string | undefined {

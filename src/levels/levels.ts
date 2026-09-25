@@ -3,31 +3,9 @@
 //
 // Both upstream sources are Dutch government/water-board HTTP APIs that do
 // not send permissive CORS headers for arbitrary browser origins, so the
-// browser calls OUR proxy's `/levels` endpoint (the same Cloudflare Worker
-// used for AIS; see proxy/), which fetches upstream server-side and returns
-// plain JSON with CORS enabled for the configured origin.
-//
-// Upstream sources (see proxy/src/levels.ts for the actual fetch logic):
-//  - ARK: Rijkswaterstaat Waterwebservices / DDL, `OphalenLaatsteWaarnemingen`,
-//    parameter WATHTE ("waterhoogte", water level) in cm relative to NAP, at
-//    a measuring location on the ARK near Maarssen/Breukelen. See
-//    https://waterinfo.rws.nl/ and https://rijkswaterstaat.github.io/wm-ws-dl/
-//    (classic DDL) — RWS announced a successor "Waterwebservices" API going
-//    live December 2025 with the classic DDL retiring end of April 2026; the
-//    proxy should be updated to the new API before then. VERIFIED: the
-//    general OphalenLaatsteWaarnemingen mechanism and WATHTE parameter exist
-//    and are documented. NOT VERIFIED: we could not confirm the exact DDL
-//    location code for a station on the ARK immediately adjacent to
-//    Breukelen from this environment (network access was limited to search
-//    results, no direct fetch of waterinfo.rws.nl's location catalogue) —
-//    the proxy takes the code from an env var so it can be corrected without
-//    a code change once confirmed against https://waterinfo.rws.nl.
-//  - Vecht: HDSR (Hoogheemraadschap De Stichtse Rijnlanden) open water data /
-//    Lizard API (https://hdsr.lizard.net, see the "Handleiding Open Water
-//    Data API van HDSR" manual). VERIFIED: HDSR publishes live water levels
-//    (locks, gemalen, peilvakken) through this API. NOT VERIFIED: the exact
-//    Lizard timeseries UUID for a Vecht gauge at/near Breukelen — same
-//    env-var approach in the proxy.
+// browser calls the `/levels` endpoint of server/, which fetches upstream
+// server-side (see server/levels.ts: Rijkswaterstaat for the ARK, HDSR
+// Lizard for the Vecht) and returns plain JSON.
 import { proxyHttpBase } from '../proxyUrl';
 import type { BoundaryLevels } from '../types';
 
@@ -61,7 +39,7 @@ export interface LevelsResult {
 }
 
 export interface FetchLevelsOptions {
-  /** Base URL of the proxy, e.g. https://ais-proxy.example.workers.dev. Defaults to `import.meta.env.VITE_AIS_PROXY_URL` (absolute or a same-origin path) with the trailing `/ais` stripped. */
+  /** Base URL of the proxy, e.g. https://waterstroom.example.nl. Defaults to `import.meta.env.VITE_AIS_PROXY_URL` (absolute or a same-origin path) with the trailing `/ais` stripped. */
   baseUrl?: string;
   /** Fetch implementation, for tests. Defaults to globalThis.fetch. */
   fetchImpl?: typeof fetch;

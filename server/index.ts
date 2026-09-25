@@ -1,20 +1,19 @@
 // Self-hosted app server: serves the built front end from dist/ and the
 // proxy endpoints on the same origin, so no CORS and no separate proxy
 // deployment are needed:
-//   GET /levels  live water levels (proxy/src/levels.ts)
+//   GET /levels  live water levels (server/levels.ts)
 //   WS  /ais     aisstream.io relay (server/ais.ts)
 //   GET /healthz liveness check
 // Configuration comes from environment variables; see .env.example.
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import type { Env } from '../proxy/src/env.ts';
-import { fetchLevelsPayload } from '../proxy/src/levels.ts';
+import type { Env } from './env.ts';
+import { fetchLevelsPayload } from './levels.ts';
 import { handleAisUpgrade } from './ais.ts';
 import { serveStatic } from './static.ts';
 
 const e = process.env;
 const env: Env = {
-  ALLOWED_ORIGIN: '',
   AISSTREAM_API_KEY: e.AISSTREAM_API_KEY ?? '',
   AIS_BBOX_SOUTH: e.AIS_BBOX_SOUTH || '52.15',
   AIS_BBOX_WEST: e.AIS_BBOX_WEST || '4.97',

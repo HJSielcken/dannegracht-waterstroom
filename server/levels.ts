@@ -7,9 +7,9 @@
 //   Docs: https://rijkswaterstaat.github.io/wm-ws-dl/ (classic DDL).
 //   The classic DDL host (waterwebservices.rijkswaterstaat.nl) was retired
 //   end of April 2026; this calls its successor (ddapi20-...), which keeps
-//   the same OphalenLaatsteWaarnemingen POST contract. The successor uses
-//   new, lowercase location codes (e.g. "ameland.nes"), so the old DDL code
-//   in wrangler.toml must be replaced by the new one for the ARK gauge.
+//   the OphalenLaatsteWaarnemingen endpoint but takes lists
+//   (LocatieLijst, AquoPlusWaarnemingMetadataLijst) and new, lowercase
+//   location codes (e.g. "maarssen.kanaal").
 //
 // Vecht: HDSR (Hoogheemraadschap De Stichtse Rijnlanden) Lizard open water
 // data API, a timeseries `events` lookup by UUID
@@ -17,14 +17,10 @@
 //   Docs: "Handleiding Open Water Data API van HDSR",
 //   https://hdsr.lizard.net.
 //
-// Both location identifiers are NOT independently verified against the
-// live catalogues from the environment this proxy was written in (no
-// outbound network beyond search results) — see wrangler.toml for the
-// caveat and how to correct them. When either upstream call fails or the
-// identifier is unset, that boundary falls back to FALLBACK_LEVELS below
-// (kept in sync by hand with src/levels/levels.ts's DEFAULT_LEVELS; there
-// is no shared module between the app and the Worker).
-import type { Env } from './env';
+// When either upstream call fails or the identifier is unset, that boundary
+// falls back to FALLBACK_LEVELS below (kept in sync by hand with
+// src/levels/levels.ts's DEFAULT_LEVELS).
+import type { Env } from './env.ts';
 
 /** Keep numerically in sync with src/levels/levels.ts DEFAULT_LEVELS. */
 export const FALLBACK_LEVELS = { vechtNapM: -0.4, arkNapM: -0.4 };
