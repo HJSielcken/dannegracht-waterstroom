@@ -79,7 +79,7 @@ ctx.onmessage = (ev: MessageEvent<SimRequest>) => {
       case 'init': {
         const wasRunning = timer !== null;
         stop();
-        sim = new Simulation(msg.scene, msg.config, msg.levels);
+        sim = new Simulation(msg.scene, msg.config, msg.levels, {}, msg.currents);
         postReady();
         postField();
         if (wasRunning) start();
@@ -87,6 +87,9 @@ ctx.onmessage = (ev: MessageEvent<SimRequest>) => {
       }
       case 'setLevels':
         sim?.setLevels(msg.levels);
+        break;
+      case 'setCurrents':
+        sim?.setCurrents(msg.currents);
         break;
       case 'setConfig': {
         if (!sim) break;

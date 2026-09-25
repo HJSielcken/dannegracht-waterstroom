@@ -15,6 +15,7 @@ import type {
   BoundaryLevels,
   FlowField,
   Probe,
+  RiverCurrents,
   Scene,
   SimConfig,
   SimRequest,
@@ -25,6 +26,12 @@ import { FlowLayer, flowLegend } from './ui/flowLayer';
 import { ProbePanel } from './ui/probePanel';
 
 const DEFAULT_CONFIG: SimConfig = { cellSizeM: 3, manningN: 0.03, timeScale: 1 };
+/**
+ * Typical northward currents: the Vecht carries ~4 m³/s from the Weerdsluis (≈ 5 cm/s over
+ * 30 m × 2.5 m), the ARK ~13 m³/s let in at Wijk bij Duurstede and Vreeswijk (≈ 2 cm/s over
+ * 115 m × 5.5 m). See README.
+ */
+const DEFAULT_CURRENTS: RiverCurrents = { vechtMs: 0.05, arkMs: 0.02 };
 const PINNED_PROBE_ID = 'brugstraat-10e';
 /** Geocoded probe positions further than this from the scene origin are rejected as wrong hits. */
 const MAX_GEOCODE_DISTANCE_M = 1500;
@@ -38,6 +45,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 let scene: Scene = fallbackScene();
 let probes: Probe[] = scene.probes.map((p) => ({ ...p }));
 let levels: BoundaryLevels = { ...DEFAULT_LEVELS };
+let currents: RiverCurrents = { ...DEFAULT_CURRENTS };
 let config: SimConfig = { ...DEFAULT_CONFIG };
 let running = true;
 let lockOpen = true;
@@ -307,7 +315,7 @@ function startWorker(): void {
   worker.onerror = (e) => {
     status.textContent = `Fout in simulatie: ${e.message}`;
   };
-  send({ type: 'init', scene: projectScene(sceneForSim()), config, levels });
+  send({ type: 'init', scene: projectScene(sceneForSim()), config, levels, currents });
 }
 
 /** Address of the pinned probe; the probe itself sits on the nearest Dannegracht water. */
@@ -503,6 +511,22 @@ $('levels-live').addEventListener('click', async () => {
   else $('levels-source').textContent = 'Live peilen niet beschikbaar (geen proxy ingesteld).';
 });
 
+const currentVecht = $<HTMLInputElement>('current-vecht');
+const currentArk = $<HTMLInputElement>('current-ark');
+function renderCurrents(): void {
+  currentVecht.value = String(currents.vechtMs * 100);
+  currentArk.value = String(currents.arkMs * 100);
+  $('current-vecht-out').textContent = (currents.vechtMs * 100).toFixed(1);
+  $('current-ark-out').textContent = (currents.arkMs * 100).toFixed(1);
+}
+const onCurrentInput = () => {
+  currents = { vechtMs: Number(currentVecht.value) / 100, arkMs: Number(currentArk.value) / 100 };
+  renderCurrents();
+  send({ type: 'setCurrents', currents });
+};
+currentVecht.addEventListener('input', onCurrentInput);
+currentArk.addEventListener('input', onCurrentInput);
+
 $('run').addEventListener('click', () => {
   running = !running;
   $('run').textContent = running ? 'Pauze' : 'Start';
@@ -555,6 +579,7 @@ $<HTMLFormElement>('geocode-form').addEventListener('submit', async (e) => {
 
 async function init(): Promise<void> {
   renderLevels();
+  renderCurrents();
   updateTimeScale();
   lockToggle.checked = lockOpen;
   drawScene();

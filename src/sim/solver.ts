@@ -14,6 +14,11 @@
 //      distance SPONGE_START_M from the Dannegracht (or other interior water) are nudged
 //      towards the prescribed level with a rate ramping up to 1/SPONGE_TIMESCALE_S at
 //      SPONGE_FULL_M. The volume added/removed by nudging is accounted in `spongeVolumeM3`.
+//      River currents: each river gets a potential-flow direction field along its own cells
+//      (riverFlow.ts). It starts at the requested speed, the sponge also nudges the face
+//      velocities towards it, and the level target falls downstream with the Manning slope
+//      S = n^2 v^2 / h^(4/3), with the prescribed level at the Dannegracht mouth. So the
+//      upstream sponge supplies the river's discharge and the downstream one drains it.
 //
 // Time step: CFL-adaptive, dt = cfl * dx / (sqrt(g h_max) + |u|_max), also bounded by the
 // viscous limit, boat speed and MAX_DT. The C-grid forward-backward scheme is stable for
@@ -22,9 +27,10 @@
 // Only water cells/faces are visited: active cell and face index lists are precomputed, so
 // land (most of the real 1.5 x 1.5 km domain) costs nothing.
 
-import type { BoundaryLevels } from '../types';
+import type { BoundaryLevels, RiverCurrents } from '../types';
 import { BoatForcing } from './boatForcing';
 import { KIND_ARK, KIND_DANNEGRACHT, KIND_OTHER, KIND_VECHT, type Grid } from './grid';
+import { riverPotential } from './riverFlow';
 
 export const G = 9.81;
 /** Depth below which a cell/face counts as dry. */
@@ -62,6 +68,7 @@ export class ShallowWaterSolver {
   readonly grid: Grid;
   params: SolverParams;
   levels: BoundaryLevels;
+  currents: RiverCurrents = { vechtMs: 0, arkMs: 0 };
   readonly boats = new BoatForcing();
 
   /** Water level at cell centres (m NAP). */
@@ -101,15 +108,46 @@ export class ShallowWaterSolver {
   private spongeCells: Int32Array = new Int32Array(0);
   private spongeRate: Float64Array = new Float64Array(0);
   private spongeIsArk: Uint8Array = new Uint8Array(0);
+  /**
+   * Per cell of the Vecht/ARK: distance along the river below the Dannegracht mouth (m,
+   * negative upstream) divided by h^(4/3). Times n^2 v|v| this gives how far the level there
+   * lies below the level at the mouth for a current v.
+   */
+  private riverSlopeFactor: Float64Array = new Float64Array(0);
+  /**
+   * River end zones: open boundaries held exactly at the target level, so the river's
+   * discharge can enter and leave the model there.
+   */
+  private openCells: Int32Array = new Int32Array(0);
+  private openIsArk: Uint8Array = new Uint8Array(0);
+  /** Level at the open ends, lagging the prescribed levels by the sponge timescale. */
+  private openLevels: BoundaryLevels;
+  /** Unit river current per face (x- and y-faces; 0 outside the rivers) and its river. */
+  private riverUnitU: Float64Array = new Float64Array(0);
+  private riverUnitV: Float64Array = new Float64Array(0);
+  private riverIsArkU: Uint8Array = new Uint8Array(0);
+  private riverIsArkV: Uint8Array = new Uint8Array(0);
+  /** Sponge faces (x then y) with their nudging rate (1/s). */
+  private spongeFacesU: Int32Array = new Int32Array(0);
+  private spongeRateU: Float64Array = new Float64Array(0);
+  private spongeFacesV: Int32Array = new Int32Array(0);
+  private spongeRateV: Float64Array = new Float64Array(0);
 
   private lastUmax = 0;
   private lastHmax = 0;
   private boatVmax = 0;
 
-  constructor(grid: Grid, levels: BoundaryLevels, params: Partial<SolverParams> = {}) {
+  constructor(
+    grid: Grid,
+    levels: BoundaryLevels,
+    params: Partial<SolverParams> = {},
+    currents: RiverCurrents = { vechtMs: 0, arkMs: 0 },
+  ) {
     this.grid = grid;
     this.params = { ...DEFAULT_SOLVER_PARAMS, ...params };
     this.levels = { ...levels };
+    this.openLevels = { ...levels };
+    this.currents = { ...currents };
     const { nx, ny, water, faceU, faceV } = grid;
     const n = nx * ny;
     const nu = (nx + 1) * ny;
@@ -170,6 +208,19 @@ export class ShallowWaterSolver {
   /** Change prescribed reservoir levels (takes effect through the sponge). */
   setLevels(levels: BoundaryLevels): void {
     this.levels = { ...levels };
+  }
+
+  /** Change the river currents (takes effect through the sponge). */
+  setCurrents(currents: RiverCurrents): void {
+    this.currents = { ...currents };
+  }
+
+  /** Nudging target (m NAP) of river cell c: the prescribed level minus the current's slope. */
+  private riverTarget(c: number, isArk: boolean, levels = this.levels): number {
+    const { vechtNapM, arkNapM } = levels;
+    const v = isArk ? this.currents.arkMs : this.currents.vechtMs;
+    const n = this.params.manningN;
+    return (isArk ? arkNapM : vechtNapM) - this.riverSlopeFactor[c]! * n * n * v * Math.abs(v);
   }
 
   /** Mean of the two boundary levels; used as still-water reference for boats. */
@@ -302,6 +353,23 @@ export class ShallowWaterSolver {
       vNew[k] = vn;
     }
 
+    // --- 1c. river current nudging in the sponge ---------------------------------------------
+    const { vechtMs, arkMs } = this.currents;
+    const sfu = this.spongeFacesU;
+    for (let n = 0; n < sfu.length; n++) {
+      const k = sfu[n]!;
+      const target = (this.riverIsArkU[k] ? arkMs : vechtMs) * this.riverUnitU[k]!;
+      const rdt = this.spongeRateU[n]! * dt;
+      uNew[k] = (uNew[k]! + target * rdt) / (1 + rdt);
+    }
+    const sfv = this.spongeFacesV;
+    for (let n = 0; n < sfv.length; n++) {
+      const k = sfv[n]!;
+      const target = (this.riverIsArkV[k] ? arkMs : vechtMs) * this.riverUnitV[k]!;
+      const rdt = this.spongeRateV[n]! * dt;
+      vNew[k] = (vNew[k]! + target * rdt) / (1 + rdt);
+    }
+
     // --- 2. continuity with positivity limiter ---------------------------------------------
     const cells = this.cells;
     for (let n = 0; n < cells.length; n++) outflow[cells[n]!] = 0;
@@ -378,17 +446,32 @@ export class ShallowWaterSolver {
     const sc = this.spongeCells;
     const sr = this.spongeRate;
     const sa = this.spongeIsArk;
-    const { vechtNapM, arkNapM } = this.levels;
     let dVol = 0;
     for (let n = 0; n < sc.length; n++) {
       const c = sc[n]!;
-      const target = sa[n] ? arkNapM : vechtNapM;
+      const target = this.riverTarget(c, sa[n] === 1);
       const e = eta[c]!;
       const rdt = sr[n]! * dt;
       // implicit (unconditionally stable) relaxation
       let ne = e + ((target - e) * rdt) / (1 + rdt);
       if (ne < zb[c]!) ne = zb[c]!;
       dVol += ne - e;
+      eta[c] = ne;
+    }
+    // The open ends follow a level change as smoothly as the sponge does; a sudden jump
+    // there would start a seiche in the gracht.
+    const ol = this.openLevels;
+    const rOpen = dt / (this.params.spongeTimescaleS + dt);
+    ol.vechtNapM += (this.levels.vechtNapM - ol.vechtNapM) * rOpen;
+    ol.arkNapM += (this.levels.arkNapM - ol.arkNapM) * rOpen;
+    const oc = this.openCells;
+    for (let n = 0; n < oc.length; n++) {
+      const isArk = this.openIsArk[n] === 1;
+      // Without a current there is no discharge to pass; the sponge alone absorbs better.
+      if ((isArk ? this.currents.arkMs : this.currents.vechtMs) === 0) continue;
+      const c = oc[n]!;
+      const ne = Math.max(this.riverTarget(c, isArk, ol), zb[c]!);
+      dVol += ne - eta[c]!;
       eta[c] = ne;
     }
     this.spongeVolumeM3 += dVol * dx * dx;
@@ -445,10 +528,63 @@ export class ShallowWaterSolver {
    * water network (4-neighbour BFS), used to build the nudging zone.
    */
   private setupSponge(): void {
-    const { kind } = this.grid;
+    const { kind, nx, zb, referenceLevelNapM } = this.grid;
     const { spongeStartM, spongeFullM, spongeTimescaleS } = this.params;
     const dist = this.bfs((c) => kind[c] === KIND_DANNEGRACHT || kind[c] === KIND_OTHER);
     const dx = this.grid.dx;
+
+    // Potential along each river (m, decreasing downstream) and its value at the mouth,
+    // i.e. the mean over the river's cells next to the gracht.
+    const psi = new Float64Array(nx * this.grid.ny).fill(NaN);
+    const openCells: number[] = [];
+    const psiMouth = [0, 0];
+    [KIND_VECHT, KIND_ARK].forEach((code, r) => {
+      const { psi: p, ends } = riverPotential(this.grid, code);
+      // Only where the sponge is at full strength, so waves are damped before they reach
+      // the (reflecting) fixed-level ends.
+      for (const c of ends) if (dist[c]! * dx >= spongeFullM) openCells.push(c);
+      let sum = 0;
+      let count = 0;
+      for (const c of this.cells) {
+        if (kind[c] !== code || Number.isNaN(p[c]!)) continue;
+        psi[c] = p[c]!;
+        if (dist[c] === 1) {
+          sum += p[c]!;
+          count++;
+        }
+      }
+      psiMouth[r] = count ? sum / count : 0;
+    });
+    const slope = new Float64Array(nx * this.grid.ny);
+    for (const c of this.cells) {
+      if (Number.isNaN(psi[c]!)) continue;
+      const h = Math.max(referenceLevelNapM - zb[c]!, 0.1);
+      slope[c] = (psiMouth[kind[c] === KIND_ARK ? 1 : 0]! - psi[c]!) / h43(h);
+    }
+    this.riverSlopeFactor = slope;
+    this.openCells = Int32Array.from(openCells);
+    this.openIsArk = Uint8Array.from(openCells, (c) => (kind[c] === KIND_ARK ? 1 : 0));
+
+    // Unit current on faces between two cells of the same river: -grad(psi).
+    this.riverUnitU = new Float64Array(this.u.length);
+    this.riverIsArkU = new Uint8Array(this.u.length);
+    this.riverUnitV = new Float64Array(this.v.length);
+    this.riverIsArkV = new Uint8Array(this.v.length);
+    for (let n = 0; n < this.fu.length; n++) {
+      const k = this.fu[n]!;
+      const cL = this.fuWest[n]!;
+      if (kind[cL] !== kind[cL + 1] || Number.isNaN(psi[cL]!) || Number.isNaN(psi[cL + 1]!))
+        continue;
+      this.riverUnitU[k] = -(psi[cL + 1]! - psi[cL]!) / dx;
+      this.riverIsArkU[k] = kind[cL] === KIND_ARK ? 1 : 0;
+    }
+    for (const k of this.fv) {
+      const cS = k - nx;
+      if (kind[cS] !== kind[k] || Number.isNaN(psi[cS]!) || Number.isNaN(psi[k]!)) continue;
+      this.riverUnitV[k] = -(psi[k]! - psi[cS]!) / dx;
+      this.riverIsArkV[k] = kind[k] === KIND_ARK ? 1 : 0;
+    }
+
     const sc: number[] = [];
     const sr: number[] = [];
     const sa: number[] = [];
@@ -472,6 +608,34 @@ export class ShallowWaterSolver {
     this.spongeCells = Int32Array.from(sc);
     this.spongeRate = Float64Array.from(sr);
     this.spongeIsArk = Uint8Array.from(sa);
+
+    // Faces between two sponge cells of a river are nudged at the lower of the two rates.
+    const cellRate = new Float64Array(nx * this.grid.ny);
+    sc.forEach((c, n) => (cellRate[c] = sr[n]!));
+    const fu: number[] = [];
+    const ru: number[] = [];
+    for (let n = 0; n < this.fu.length; n++) {
+      const k = this.fu[n]!;
+      const cL = this.fuWest[n]!;
+      const rate = Math.min(cellRate[cL]!, cellRate[cL + 1]!);
+      if (rate > 0 && this.riverUnitU[k] !== 0) {
+        fu.push(k);
+        ru.push(rate);
+      }
+    }
+    const fv: number[] = [];
+    const rv: number[] = [];
+    for (const k of this.fv) {
+      const rate = Math.min(cellRate[k - nx]!, cellRate[k]!);
+      if (rate > 0 && this.riverUnitV[k] !== 0) {
+        fv.push(k);
+        rv.push(rate);
+      }
+    }
+    this.spongeFacesU = Int32Array.from(fu);
+    this.spongeRateU = Float64Array.from(ru);
+    this.spongeFacesV = Int32Array.from(fv);
+    this.spongeRateV = Float64Array.from(rv);
   }
 
   /** Initial state: reservoirs at their level, interior water interpolated by path distance. */
@@ -483,8 +647,8 @@ export class ShallowWaterSolver {
     for (const c of this.cells) {
       const k = kind[c];
       let e: number;
-      if (k === KIND_VECHT) e = vechtNapM;
-      else if (k === KIND_ARK) e = arkNapM;
+      if (k === KIND_VECHT) e = this.riverTarget(c, false);
+      else if (k === KIND_ARK) e = this.riverTarget(c, true);
       else {
         const a = dV[c]!;
         const b = dA[c]!;
@@ -495,8 +659,12 @@ export class ShallowWaterSolver {
       }
       this.eta[c] = Math.max(e, zb[c]!);
     }
-    this.u.fill(0);
-    this.v.fill(0);
+    // Rivers start with their current; everything else at rest.
+    const { vechtMs, arkMs } = this.currents;
+    for (let k = 0; k < this.u.length; k++)
+      this.u[k] = (this.riverIsArkU[k] ? arkMs : vechtMs) * this.riverUnitU[k]!;
+    for (let k = 0; k < this.v.length; k++)
+      this.v[k] = (this.riverIsArkV[k] ? arkMs : vechtMs) * this.riverUnitV[k]!;
     this.timeS = 0;
     this.spongeVolumeM3 = 0;
   }
