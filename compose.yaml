@@ -6,5 +6,5 @@ services:
       args:
         VITE_AIS_PROXY_URL: ${VITE_AIS_PROXY_URL:-}
     ports:
-      - '${PORT:-8080}:80'
+      - '${PORT:-8533}:80'
     restart: unless-stopped

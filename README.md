@@ -73,7 +73,7 @@ de repository-instellingen in:
 - optioneel variabele `DOCKER_IMAGE` – imagenaam, standaard `<gebruikersnaam>/dannegracht-waterstroom`
 - optioneel variabele `VITE_AIS_PROXY_URL` – wordt bij het bouwen in de bundel gezet
 
-Draaien met Docker Compose (standaard op poort 8080):
+Draaien met Docker Compose (standaard op poort 8533):
 
 ```bash
 docker compose pull && docker compose up -d   # image van Docker Hub
