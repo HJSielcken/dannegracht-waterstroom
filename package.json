@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "osm:snapshot": "tsx scripts/fetch-osm-snapshot.ts"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "@types/node": "^24.13.6",
     "eslint": "^10.11.0",
     "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1",
     "vite": "^8.3.1",
