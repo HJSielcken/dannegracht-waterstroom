@@ -84,21 +84,21 @@ streefpeil terug, met als bron `ark-fallback+vecht-fallback`.
 Het image bevat één Node-proces (`server/`) dat de gebouwde site serveert en de proxy-endpoints
 `/levels` en `/ais` levert op hetzelfde adres; een aparte proxy of CORS-instelling is niet nodig.
 
-Draaien met Docker Compose (standaard op poort 8533):
+Draaien met Docker Compose (poort 8533): zet in `compose.yaml` je aisstream.io-sleutel en de
+meetpuntcodes onder `environment` en start het image van Docker Hub:
 
 ```bash
-cp .env.example .env                          # vul AISSTREAM_API_KEY en de meetpuntcodes in
-docker compose pull && docker compose up -d   # image van Docker Hub
-docker compose up -d --build                  # of lokaal bouwen
+docker compose pull && docker compose up -d
 ```
 
 | Variabele                    | Betekenis                                                     |
 | ---------------------------- | ------------------------------------------------------------- |
-| `PORT`                       | Poort op de host (standaard 8533)                             |
 | `AISSTREAM_API_KEY`          | API-sleutel van [aisstream.io](https://aisstream.io) voor AIS |
 | `RWS_ARK_LOCATION_CODE`      | Locatiecode van een ARK-meetpunt (waterinfo.rws.nl)           |
 | `HDSR_VECHT_TIMESERIES_UUID` | Lizard-tijdreeks van een Vecht-meetpunt (hdsr.lizard.net)     |
-| `DOCKER_IMAGE`, `DOCKER_TAG` | Welk image Compose gebruikt                                   |
+
+Zet je ingevulde `compose.yaml` niet terug in git; de sleutel is geheim. Een image lokaal bouwen kan
+met `docker build -t hjsielcken/dannegracht-waterstroom .`.
 
 Zonder Docker: `npm run build && npm start` (poort 8080, zelfde variabelen), met
 `VITE_AIS_PROXY_URL=/ais` tijdens de build.
