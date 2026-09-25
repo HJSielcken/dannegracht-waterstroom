@@ -17,8 +17,9 @@
 //      River currents: each river gets a potential-flow direction field along its own cells
 //      (riverFlow.ts). It starts at the requested speed, the sponge also nudges the face
 //      velocities towards it, and the level target falls downstream with the Manning slope
-//      S = n^2 v^2 / h^(4/3), with the prescribed level at the Dannegracht mouth. So the
-//      upstream sponge supplies the river's discharge and the downstream one drains it.
+//      S = n^2 v^2 / h^(4/3), with the prescribed level at the Dannegracht mouth. The
+//      river's end rows are open boundaries held at that level, where the discharge enters
+//      and leaves the model.
 //
 // Time step: CFL-adaptive, dt = cfl * dx / (sqrt(g h_max) + |u|_max), also bounded by the
 // viscous limit, boat speed and MAX_DT. The C-grid forward-backward scheme is stable for
