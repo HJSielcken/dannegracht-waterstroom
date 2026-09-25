@@ -29,6 +29,8 @@ async function fetchOverpass(query: string): Promise<OverpassResponse> {
         method: 'POST',
         body: new URLSearchParams({ data: query }),
         headers: { 'User-Agent': 'dannegracht-waterstroom snapshot (GitHub Actions)' },
+        // A stalled mirror must not hang the workflow; move on to the next one.
+        signal: AbortSignal.timeout(60_000),
       });
       if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
       return (await res.json()) as OverpassResponse;
