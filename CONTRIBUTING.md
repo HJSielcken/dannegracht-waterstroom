@@ -18,11 +18,11 @@ docs: beschrijf de modelaannames
 ```
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`.
-Scopes volgen de mappen in `src/`: `sim`, `geo`, `boats`, `levels`, `ui`, plus `proxy`.
+Scopes volgen de mappen in `src/`: `sim`, `geo`, `boats`, `levels`, `ui`, plus `server`.
 
 ## Lokaal controleren
 
 ```bash
-npm ci
-npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
+pnpm install
+pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build
 ```

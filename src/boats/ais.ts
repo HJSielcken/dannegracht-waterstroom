@@ -5,9 +5,9 @@
 // connect directly from a browser due to CORS restrictions—you must connect
 // through a backend server", and API keys must stay server-side). So this
 // client never talks to wss://stream.aisstream.io itself; instead it opens a
-// WebSocket to OUR proxy (see proxy/, a Cloudflare Worker) which holds the
-// API key as a secret, subscribes to a bounding box around the Dannegracht,
-// and relays the raw aisstream.io JSON messages through unmodified.
+// WebSocket to OUR relay (server/ais.ts) which holds the API key, subscribes
+// to a bounding box around the Dannegracht, and relays the raw aisstream.io
+// JSON messages through unmodified.
 //
 // The proxy URL is read from `import.meta.env.VITE_AIS_PROXY_URL`: an
 // absolute wss:// URL, or a path such as `/ais` when server/ serves the app
@@ -31,7 +31,7 @@ export type AisListener = (boats: Boat[]) => void;
 export type AisStatusListener = (status: AisStatus) => void;
 
 export interface AisClientOptions {
-  /** Proxy WebSocket URL, e.g. wss://ais-proxy.example.workers.dev/ais or `/ais`. Defaults to `import.meta.env.VITE_AIS_PROXY_URL`. */
+  /** Proxy WebSocket URL, e.g. wss://waterstroom.example.nl/ais or `/ais`. Defaults to `import.meta.env.VITE_AIS_PROXY_URL`. */
   proxyUrl?: string;
   /** Drop boats not heard from for this long. Default 10 minutes. */
   staleAfterMs?: number;

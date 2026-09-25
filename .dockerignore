@@ -1,8 +1,6 @@
 node_modules
 dist
 coverage
-proxy/node_modules
-proxy/.wrangler
 .git
 .github
 .env

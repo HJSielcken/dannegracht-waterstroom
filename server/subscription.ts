@@ -1,6 +1,5 @@
-// aisstream.io subscription message, shared by the Cloudflare Worker
-// (proxy/src/ais.ts) and the self-hosted Node server (server/ais.ts).
-import type { Env } from './env';
+// aisstream.io subscription message for the relay in server/ais.ts.
+import type { Env } from './env.ts';
 
 export const AISSTREAM_URL = 'wss://stream.aisstream.io/v0/stream';
 
