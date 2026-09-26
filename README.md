@@ -63,7 +63,9 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   vaart, vaart hij met de koers en snelheid van dat moment door op de simulatieklok, zodat
   verspringende AIS-posities geen valse golven maken. Een bocht die de boot daarna maakt, ziet het
   model dus niet. Verlaat hij het water, dan staat hij weer op zijn AIS-positie en telt hij niet meer
-  mee.
+  mee. Dat overnemen gebeurt alleen bij een AIS-positie van hooguit 30 s oud; posities
+  worden gedateerd met de AIS-tijdstempel, niet met het moment van ontvangst. De boot staat op het
+  midden van de romp, niet op de GPS-antenne (die bij vrachtschepen vaak achterop staat).
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
   spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.
 - **Wrijving.** Het model remt de stroming op twee manieren af: bodemwrijving (Manning, n = 0,03) en

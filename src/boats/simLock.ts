@@ -9,11 +9,15 @@
 // released: it goes back to its AIS position on the map and is no longer sent to the sim, until
 // its AIS position has left the simulated water too. Boats outside the simulated water are not
 // sent to the sim at all, so a boat's forcing ramps in when it enters rather than while it is
-// still over land.
+// still over land. Only a boat with a recent fix is locked: a position dead-reckoned from a fix
+// minutes old can be hundreds of metres off, and once locked the error would never be corrected.
 import type { Boat, LatLon } from '../types';
 import { moveAlong } from './aisMessages';
 
 export type InSimWater = (p: LatLon) => boolean;
+
+/** Lock a boat only if its last AIS fix is at most this old (ms). */
+export const MAX_LOCK_FIX_AGE_MS = 30_000;
 
 interface Locked {
   position: LatLon;
@@ -36,8 +40,9 @@ export class SimWaterLock {
   /**
    * Split AIS boats (already dead-reckoned to now) into what to draw and what the sim gets.
    * `shown` has every boat, locked ones at their simulated position; `sim` only the locked ones.
+   * `now` (epoch ms) is compared with each boat's `updatedAt` to skip boats with a stale fix.
    */
-  apply(boats: Boat[], inSimWater: InSimWater): { shown: Boat[]; sim: Boat[] } {
+  apply(boats: Boat[], inSimWater: InSimWater, now: number): { shown: Boat[]; sim: Boat[] } {
     const shown: Boat[] = [];
     const sim: Boat[] = [];
     const present = new Set<string>();
@@ -56,7 +61,7 @@ export class SimWaterLock {
         }
         this.released.delete(b.id);
       }
-      if (!l && inSimWater(b.position)) {
+      if (!l && now - b.updatedAt <= MAX_LOCK_FIX_AGE_MS && inSimWater(b.position)) {
         l = { position: b.position, courseDeg: b.courseDeg, speedMs: b.speedMs };
         this.locked.set(b.id, l);
       }
