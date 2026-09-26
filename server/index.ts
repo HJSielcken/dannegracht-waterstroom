@@ -21,8 +21,8 @@ const env: Env = {
   AIS_BBOX_EAST: e.AIS_BBOX_EAST || '5.03',
   // Rijkswaterstaat gauge on the ARK at Maarssen, about 4 km from the Dannegracht.
   RWS_ARK_LOCATION_CODE: e.RWS_ARK_LOCATION_CODE || 'maarssen.kanaal',
-  // HDSR gauge "DAALSEWEG_2153-w_Vecht" (H.G.15, m NAP) in Maarssen, the nearest
-  // Vecht gauge upstream of Breukelen on the same boezem.
+  // HDSR gauge "DAALSEWEG_2153-w_Vecht" (H.G.15, m NAP) at Oud-Zuilen, the nearest
+  // Vecht gauge upstream of Breukelen on the same boezem (about 9 km along the river).
   HDSR_VECHT_TIMESERIES_UUID:
     e.HDSR_VECHT_TIMESERIES_UUID || '66ca9d96-6454-411f-a2a5-65c51225befe',
 };
