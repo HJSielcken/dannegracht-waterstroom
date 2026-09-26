@@ -25,15 +25,19 @@ function aisBoat(lat: number, extra: Partial<Boat> = {}): Boat {
 describe('SimWaterLock', () => {
   it('shows boats outside the simulated water but does not send them to the sim', () => {
     const lock = new SimWaterLock();
-    const { shown, sim } = lock.apply([aisBoat(52.19)], inWater);
+    const { shown, sim } = lock.apply([aisBoat(52.19)], inWater, 0);
     expect(shown).toHaveLength(1);
     expect(sim).toHaveLength(0);
   });
 
   it('ignores AIS positions once a boat is in the simulated water', () => {
     const lock = new SimWaterLock();
-    lock.apply([aisBoat(52.175)], inWater);
-    const { shown, sim } = lock.apply([aisBoat(52.1752, { courseDeg: 90, speedMs: 5 })], inWater);
+    lock.apply([aisBoat(52.175)], inWater, 0);
+    const { shown, sim } = lock.apply(
+      [aisBoat(52.1752, { courseDeg: 90, speedMs: 5 })],
+      inWater,
+      0,
+    );
     expect(sim).toHaveLength(1);
     expect(shown[0]!.position.lat).toBe(52.175);
     expect(sim[0]!.courseDeg).toBe(180);
@@ -42,37 +46,48 @@ describe('SimWaterLock', () => {
 
   it('moves locked boats with the simulation clock', () => {
     const lock = new SimWaterLock();
-    lock.apply([aisBoat(52.175)], inWater);
+    lock.apply([aisBoat(52.175)], inWater, 0);
     lock.advance(10);
-    const { sim } = lock.apply([aisBoat(52.175)], inWater);
+    const { sim } = lock.apply([aisBoat(52.175)], inWater, 0);
     expect((52.175 - sim[0]!.position.lat) * 111_320).toBeCloseTo(20, 1);
   });
 
   it('keeps following AIS dimensions while locked', () => {
     const lock = new SimWaterLock();
-    lock.apply([aisBoat(52.175)], inWater);
-    const { sim } = lock.apply([aisBoat(52.175, { lengthM: 40, beamM: 6 })], inWater);
+    lock.apply([aisBoat(52.175)], inWater, 0);
+    const { sim } = lock.apply([aisBoat(52.175, { lengthM: 40, beamM: 6 })], inWater, 0);
     expect(sim[0]!.lengthM).toBe(40);
   });
 
   it('releases a boat that leaves the simulated water and does not re-lock it at once', () => {
     const lock = new SimWaterLock();
-    lock.apply([aisBoat(52.179, { courseDeg: 0 })], inWater);
+    lock.apply([aisBoat(52.179, { courseDeg: 0 })], inWater, 0);
     lock.advance(100); // 200 m north: out of the water
-    let r = lock.apply([aisBoat(52.1795)], inWater);
+    let r = lock.apply([aisBoat(52.1795)], inWater, 0);
     expect(r.sim).toHaveLength(0);
     expect(r.shown[0]!.position.lat).toBe(52.1795);
     expect(lock.isLocked('ais:1')).toBe(false);
     // Its AIS position leaves the water, then comes back: it may be locked again.
-    lock.apply([aisBoat(52.185)], inWater);
-    r = lock.apply([aisBoat(52.178)], inWater);
+    lock.apply([aisBoat(52.185)], inWater, 0);
+    r = lock.apply([aisBoat(52.178)], inWater, 0);
     expect(r.sim).toHaveLength(1);
   });
 
   it('forgets boats that disappear from AIS', () => {
     const lock = new SimWaterLock();
-    lock.apply([aisBoat(52.175)], inWater);
-    lock.apply([], inWater);
+    lock.apply([aisBoat(52.175)], inWater, 0);
+    lock.apply([], inWater, 0);
     expect(lock.isLocked('ais:1')).toBe(false);
+  });
+
+  it('does not lock a boat whose last AIS fix is stale', () => {
+    const lock = new SimWaterLock();
+    // Fix 5 minutes old (e.g. replayed by the relay): shown, but not handed to the sim.
+    let r = lock.apply([aisBoat(52.175)], inWater, 300_000);
+    expect(r.sim).toHaveLength(0);
+    expect(r.shown).toHaveLength(1);
+    // Once a fresh fix arrives it is locked.
+    r = lock.apply([aisBoat(52.175, { updatedAt: 299_000 })], inWater, 300_000);
+    expect(r.sim).toHaveLength(1);
   });
 });

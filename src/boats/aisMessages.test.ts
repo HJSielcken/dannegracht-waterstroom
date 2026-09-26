@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAisMessage,
   deadReckon,
+  hullCentre,
   isUnderway,
+  parseAisTime,
   parseAisRawMessage,
   pruneStaleTracks,
   trackToBoat,
@@ -116,6 +118,49 @@ describe('applyAisMessage (class A merge)', () => {
   });
 });
 
+describe('applyAisMessage (fix time)', () => {
+  const at = (time_utc: string, lat: number): AisRawMessage => ({
+    ...classAPosition,
+    MetaData: { ...classAPosition.MetaData, time_utc },
+    Message: { PositionReport: { ...classAPosition.Message.PositionReport, Latitude: lat } },
+  });
+  const t10 = Date.parse('2026-09-25T10:00:00Z');
+
+  it('parses aisstream.io timestamps', () => {
+    expect(parseAisTime('2026-09-25 10:00:00.123456789 +0000 UTC')).toBe(t10 + 123);
+    expect(parseAisTime('2026-09-25 10:00:00 +0000 UTC')).toBe(t10);
+    expect(parseAisTime('garbage')).toBeUndefined();
+    expect(parseAisTime(undefined)).toBeUndefined();
+  });
+
+  it('dates a position by its AIS timestamp, not by when it arrived', () => {
+    // A report replayed by the relay 8 minutes after it was sent.
+    const track = applyAisMessage(
+      undefined,
+      at('2026-09-25 10:00:00 +0000 UTC', 52.17),
+      t10 + 480_000,
+    );
+    expect(track.positionAt).toBe(t10);
+    expect(trackToBoat(track)!.updatedAt).toBe(t10);
+  });
+
+  it('takes a timestamp ahead of the local clock as now', () => {
+    const track = applyAisMessage(undefined, at('2026-09-25 10:00:05 +0000 UTC', 52.17), t10);
+    expect(track.positionAt).toBe(t10);
+  });
+
+  it('keeps the newer fix when an older report arrives later', () => {
+    let track = applyAisMessage(
+      undefined,
+      at('2026-09-25 10:00:30 +0000 UTC', 52.172),
+      t10 + 31_000,
+    );
+    track = applyAisMessage(track, at('2026-09-25 10:00:00 +0000 UTC', 52.17), t10 + 32_000);
+    expect(track.position!.lat).toBe(52.172);
+    expect(track.positionAt).toBe(t10 + 30_000);
+  });
+});
+
 describe('applyAisMessage (class B merge)', () => {
   it('merges StaticDataReport (nested ReportA/ReportB) and StandardClassBPositionReport', () => {
     let track: AisTrack | undefined;
@@ -180,6 +225,30 @@ describe('trackToBoat', () => {
     );
     expect(track.classB).toBe(true);
     expect(start.classB).toBeUndefined();
+  });
+
+  it('places the boat at the middle of its hull, not at the GPS antenna', () => {
+    // Antenna 90 m from the bow and 20 m from the stern, 5 m from port and 6 m from starboard.
+    let track = applyAisMessage(undefined, classAStatic, 0);
+    track = applyAisMessage(track, classAPosition, 0);
+    expect(track.antennaForwardM).toBe(35);
+    expect(track.antennaStarboardM).toBe(0.5);
+    const boat = trackToBoat(track)!;
+    // Heading 89°: the middle lies ~35 m east of the antenna.
+    const dxM = (boat.position.lon - 5.001) * 111_320 * Math.cos((52.174 * Math.PI) / 180);
+    expect(dxM).toBeCloseTo(35, 0);
+    expect(boat.position).toEqual(hullCentre({ lat: 52.174, lon: 5.001 }, 89, 35, 0.5));
+  });
+
+  it('does not offset when the antenna position is unknown (A or C zero)', () => {
+    const noRef: AisRawMessage = {
+      ...classAStatic,
+      Message: { ShipStaticData: { Dimension: { A: 0, B: 110, C: 0, D: 11 } } },
+    };
+    let track = applyAisMessage(undefined, noRef, 0);
+    track = applyAisMessage(track, classAPosition, 0);
+    expect(track.antennaForwardM).toBeUndefined();
+    expect(trackToBoat(track)!.position).toEqual({ lat: 52.174, lon: 5.001 });
   });
 
   it('produces sane hydrostatics for a fully-known class A cargo track', () => {

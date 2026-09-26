@@ -208,6 +208,8 @@ export class AisClient {
     this.tracks = pruneStaleTracks(this.tracks, now, this.staleAfterMs);
     const boats: Boat[] = [];
     for (const track of this.tracks.values()) {
+      // A replayed report can be minutes old on arrival; don't show a fix older than the cutoff.
+      if (track.positionAt !== undefined && now - track.positionAt > this.staleAfterMs) continue;
       const boat = trackToBoat(track);
       if (boat) boats.push(boat);
     }

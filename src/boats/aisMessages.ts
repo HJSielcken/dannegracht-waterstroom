@@ -101,14 +101,29 @@ export interface AisTrack {
   classB?: boolean;
   /** Epoch ms of the last message (static or dynamic) received for this MMSI. */
   updatedAt: number;
-  /** Epoch ms of the last position report, i.e. the time `position` refers to. */
+  /** Epoch ms of the last position fix (its AIS timestamp), i.e. the time `position` refers to. */
   positionAt?: number;
+  /** Metres from the GPS antenna forward to the middle of the hull, from Dimension A/B. */
+  antennaForwardM?: number;
+  /** Metres from the GPS antenna to starboard to the middle of the hull, from Dimension C/D. */
+  antennaStarboardM?: number;
 }
 
 const KNOTS_TO_MS = 0.514444;
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * Epoch ms of an aisstream.io `time_utc` stamp such as "2026-09-25 10:00:00.123456 +0000 UTC",
+ * or undefined if it cannot be read.
+ */
+export function parseAisTime(timeUtc: string | undefined): number | undefined {
+  const m = timeUtc?.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d{1,3})?/);
+  if (!m) return undefined;
+  const t = Date.parse(`${m[1]}T${m[2]}${m[3] ?? ''}Z`);
+  return Number.isFinite(t) ? t : undefined;
 }
 
 /** Narrow an arbitrary parsed-JSON value into a recognised AIS message, or null. */
@@ -152,6 +167,14 @@ export function applyAisMessage(
   const base: AisTrack = isClassB ? { ...known, classB: true } : known;
 
   if (msg.MessageType === 'PositionReport' || msg.MessageType === 'StandardClassBPositionReport') {
+    // The fix time is the AIS timestamp, not the time we received it: the relay replays reports
+    // up to 10 minutes old to a client that just connected (server/ais.ts), and those must not
+    // count as fresh. A timestamp ahead of our clock is taken as now.
+    const fixAt = Math.min(now, parseAisTime(meta.time_utc) ?? now);
+    // A report older than the fix we already have (a replay arriving after live data) is dropped.
+    if (base.positionAt !== undefined && fixAt < base.positionAt) {
+      return { ...base, mmsi, name: meta.ShipName ?? base.name, updatedAt: now };
+    }
     const body =
       msg.MessageType === 'PositionReport'
         ? msg.Message.PositionReport
@@ -173,7 +196,7 @@ export function applyAisMessage(
       mmsi,
       name: meta.ShipName ?? base.name,
       position,
-      positionAt: position !== base.position ? now : base.positionAt,
+      positionAt: position !== base.position ? fixAt : base.positionAt,
       speedMs,
       courseDeg,
       updatedAt: now,
@@ -196,6 +219,10 @@ export function applyAisMessage(
   const d = numOr0(dimensionSource?.D);
   const lengthM = a + b > 0 ? a + b : base.lengthM;
   const beamM = c + d > 0 ? c + d : base.beamM;
+  // The reported position is that of the GPS antenna, often near the stern of a cargo ship.
+  // A zero on one side means the antenna position is unknown, so no offset then.
+  const hasAB = a > 0 && b > 0;
+  const hasCD = c > 0 && d > 0;
 
   return {
     ...base,
@@ -208,6 +235,8 @@ export function applyAisMessage(
         ? staticBody.MaximumStaticDraught
         : base.draughtM,
     shipTypeCode: isFiniteNumber(staticBody.Type) ? staticBody.Type : base.shipTypeCode,
+    antennaForwardM: hasAB ? (a - b) / 2 : a + b > 0 ? undefined : base.antennaForwardM,
+    antennaStarboardM: hasCD ? (d - c) / 2 : c + d > 0 ? undefined : base.antennaStarboardM,
     updatedAt: now,
   };
 }
@@ -251,12 +280,13 @@ export function trackToBoat(track: AisTrack): Boat | null {
     shipTypeCode:
       track.shipTypeCode ?? (!small && !hasLength ? DEFAULT_CARGO_HULL.shipTypeCode : undefined),
   });
+  const courseDeg = track.courseDeg ?? 0;
   return {
     id: `ais:${track.mmsi}`,
     name: track.name,
     source: 'ais',
-    position: track.position,
-    courseDeg: track.courseDeg ?? 0,
+    position: hullCentre(track.position, courseDeg, track.antennaForwardM, track.antennaStarboardM),
+    courseDeg,
     speedMs: track.speedMs ?? 0,
     lengthM,
     beamM,
@@ -265,6 +295,23 @@ export function trackToBoat(track: AisTrack): Boat | null {
     massKg: hydro.massKg,
     updatedAt: track.positionAt ?? track.updatedAt,
   };
+}
+
+/**
+ * The middle of the hull, given the antenna position and heading: `forwardM` ahead of the antenna
+ * and `starboardM` to its right. A 110 m ship with its antenna 10 m from the stern has its middle
+ * 45 m ahead of the reported position, some 15 s of sailing at 3 m/s.
+ */
+export function hullCentre(
+  antenna: LatLon,
+  headingDeg: number,
+  forwardM = 0,
+  starboardM = 0,
+): LatLon {
+  let p = antenna;
+  if (forwardM !== 0) p = moveAlong(p, headingDeg, forwardM);
+  if (starboardM !== 0) p = moveAlong(p, headingDeg + 90, starboardM);
+  return p;
 }
 
 /** Never extrapolate further than this (5 min) past the last fix; boats stop and turn. */

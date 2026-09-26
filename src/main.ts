@@ -492,6 +492,7 @@ setInterval(() => {
   const ais = aisLock.apply(
     aisBoats.filter(isUnderway).map((b) => deadReckon(b, wallNow)),
     inSimWater,
+    wallNow,
   );
   send({ type: 'setBoats', boats: boatsToSimBoats([...virtual, ...ais.sim], project) });
   drawBoats([...virtual, ...ais.shown]);
