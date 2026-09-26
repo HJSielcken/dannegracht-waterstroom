@@ -280,16 +280,16 @@ const M_PER_DEG_LAT = 111_320;
 export function deadReckon(boat: Boat, now: number, maxS = MAX_DEAD_RECKON_S): Boat {
   const t = Math.min(maxS, Math.max(0, (now - boat.updatedAt) / 1000));
   if (t === 0 || boat.speedMs <= 0) return boat;
-  const rad = (boat.courseDeg * Math.PI) / 180;
-  const east = boat.speedMs * Math.sin(rad) * t;
-  const north = boat.speedMs * Math.cos(rad) * t;
-  const { lat, lon } = boat.position;
+  return { ...boat, position: moveAlong(boat.position, boat.courseDeg, boat.speedMs * t) };
+}
+
+/** The point `distanceM` metres from `position` along `courseDeg` (clockwise from north). */
+export function moveAlong(position: LatLon, courseDeg: number, distanceM: number): LatLon {
+  const rad = (courseDeg * Math.PI) / 180;
+  const { lat, lon } = position;
   return {
-    ...boat,
-    position: {
-      lat: lat + north / M_PER_DEG_LAT,
-      lon: lon + east / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180)),
-    },
+    lat: lat + (distanceM * Math.cos(rad)) / M_PER_DEG_LAT,
+    lon: lon + (distanceM * Math.sin(rad)) / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180)),
   };
 }
 

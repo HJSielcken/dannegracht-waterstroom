@@ -21,11 +21,15 @@ export interface BBox {
   east: number;
 }
 
-/** Area around the Dannegracht, wide enough to include the ARK west of Breukelen station. */
+/**
+ * Area around the Dannegracht, wide enough to include the ARK west of Breukelen station. The
+ * north edge lies ~900 m north of the gracht: AIS boats are handed over to the simulation where
+ * they enter it (src/boats/simLock.ts), so a shorter stretch means less time sailing blind.
+ */
 export const JUNCTION_BBOX: BBox = {
   south: 52.162,
   west: 4.975,
-  north: 52.184,
+  north: 52.179,
   east: 5.015,
 };
 

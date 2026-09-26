@@ -3,13 +3,14 @@ import './style.css';
 import L from 'leaflet';
 import { AisClient, type AisStatus } from './boats/ais';
 import { deadReckon } from './boats/aisMessages';
+import { SimWaterLock } from './boats/simLock';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
 import { ARK_ROUTE, DANNEGRACHT_ROUTE, fallbackScene } from './geo/fallback';
 import { loadSceneFromOsm } from './geo/overpass';
 import { projectScene, toLatLon, toMetric } from './geo/project';
 import { DEFAULT_LEVELS, fetchLevels } from './levels/levels';
-import { KIND_DANNEGRACHT } from './sim/grid';
+import { KIND_DANNEGRACHT, LAND } from './sim/grid';
 import type {
   Boat,
   BoundaryLevels,
@@ -348,11 +349,13 @@ function startWorker(): void {
     switch (msg.type) {
       case 'ready':
         gridKind = msg.kind;
+        gridGeometry = null;
         defaultsSnapped = false;
         status.textContent = `Geometrie: ${scene.source === 'osm' ? 'OpenStreetMap' : 'ingebouwde schets'} · rooster ${msg.nx} × ${msg.ny} cellen van ${config.cellSizeM} m`;
         send({ type: 'run', running });
         break;
       case 'field':
+        gridGeometry = msg.field;
         flowLayer.setField(msg.field);
         snapProbes(msg.field);
         simTimeS = msg.field.timeS;
@@ -379,6 +382,8 @@ function startWorker(): void {
 
 /** Water body kind per grid cell of the current simulation (from the worker's 'ready'). */
 let gridKind: Int8Array | null = null;
+/** Grid size and placement of the current simulation (from its latest 'field'). */
+let gridGeometry: Pick<FlowField, 'nx' | 'ny' | 'cellSizeM' | 'originX' | 'originY'> | null = null;
 let defaultsSnapped = false;
 /** Default probes that must measure the gracht itself, not the Vecht or the ARK. */
 const GRACHT_PROBE_IDS = new Set(scene.probes.map((p) => p.id));
@@ -442,19 +447,35 @@ setInterval(() => {
 // Boats
 // ---------------------------------------------------------------------------
 
+/** AIS boats in simulated water are moved by the sim clock instead of by AIS (see simLock.ts). */
+const aisLock = new SimWaterLock();
+
+/** Whether `p` lies on a water cell of the running simulation's grid. */
+function inSimWater(p: LatLon): boolean {
+  const g = gridGeometry;
+  if (!gridKind || !g || gridKind.length !== g.nx * g.ny) return false;
+  const v = project(p);
+  const i = Math.floor((v.x - g.originX) / g.cellSizeM);
+  const j = Math.floor((v.y - g.originY) / g.cellSizeM);
+  if (i < 0 || j < 0 || i >= g.nx || j >= g.ny) return false;
+  return gridKind[j * g.nx + i] !== LAND;
+}
+
 let lastBoatTick = performance.now();
 setInterval(() => {
   const now = performance.now();
   const dt = ((now - lastBoatTick) / 1000) * (running ? config.timeScale : 0);
   lastBoatTick = now;
   for (const vb of virtualBoats) vb.advance(dt);
+  aisLock.advance(dt);
   const wallNow = Date.now();
-  const boats = [
-    ...virtualBoats.map((vb) => vb.toBoat(wallNow)),
-    ...aisBoats.map((b) => deadReckon(b, wallNow)),
-  ];
-  send({ type: 'setBoats', boats: boatsToSimBoats(boats, project) });
-  drawBoats(boats);
+  const virtual = virtualBoats.map((vb) => vb.toBoat(wallNow));
+  const ais = aisLock.apply(
+    aisBoats.map((b) => deadReckon(b, wallNow)),
+    inSimWater,
+  );
+  send({ type: 'setBoats', boats: boatsToSimBoats([...virtual, ...ais.sim], project) });
+  drawBoats([...virtual, ...ais.shown]);
 }, 100);
 
 const presetSelect = $<HTMLSelectElement>('boat-preset');
