@@ -66,8 +66,12 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   mee.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
   spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.
-- **Snelheid in de gracht** is bij een peilverschil ongeveer de helft van wat de Manning-formule geeft:
-  de smalle, schuin liggende gracht krijgt op het rooster trapjesranden die extra weerstand geven.
+- **Wrijving.** Het model remt de stroming op twee manieren af: bodemwrijving (Manning, n = 0,03) en
+  turbulente menging tussen naburige stroomlijnen (wervelviscositeit, 0,05 m²/s). Die menging stond
+  eerst op 0,3 m²/s; op de trapjesranden van het rooster werkte dat als extra wandwrijving en kostte
+  het ongeveer een kwart van de stroming, veel meer dan de bodemwrijving.
+- **Snelheid in de gracht** blijft bij een peilverschil lager dan wat de Manning-formule geeft: de
+  smalle, schuin liggende gracht krijgt op het rooster trapjesranden die extra weerstand geven.
 - **Boten die verschijnen of optrekken.** Een boot die in het model verschijnt, verdringt zijn
   waterverplaatsing binnen 15 s en een boot die direct op snelheid is, geeft een aanloopgolf. Beide
   lopen als een golf van enkele centimeters voor de boot uit en komen bij een schip in het ARK vóór

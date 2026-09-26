@@ -323,9 +323,45 @@ button:hover {
 
 .boats li {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   padding: 2px 0;
   border-bottom: 1px dashed var(--border);
+}
+
+.boats__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boat-badge,
+.boat-icon__label {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #1d2733;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* Same colour as the hull on the map. */
+.boat-badge--ais {
+  background: var(--boat-ais);
+}
+
+.boat-badge--virtual {
+  background: var(--boat-virtual);
 }
 
 .flow-legend {
@@ -363,8 +399,19 @@ button:hover {
 }
 
 .boat-icon {
+  position: relative;
   background: none;
   border: 0;
+}
+
+/* Beside the hull, unrotated, so it stays readable whatever the course. */
+.boat-icon__label {
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 8px);
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
 }
 
 .boat-icon__rot {

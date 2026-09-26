@@ -5,7 +5,10 @@
 //   1. momentum: du/dt = -g d(eta + P)/dx - (u.grad)u + nu lap(u) - g n^2 |u| u / h^(4/3)
 //      * P = pressure head of the boats (see boatForcing.ts);
 //      * advection: first-order upwind (non-conservative), skipped for very shallow faces;
-//      * horizontal eddy viscosity with a constant nu, free-slip at walls;
+//      * horizontal eddy viscosity with a constant nu, free-slip at walls. Kept small: in a
+//        ~10 m wide, ~2 m deep gracht turbulent mixing gives ~0.01 m^2/s, and on the grid's
+//        staircase banks a larger nu acts as extra wall friction (0.3 m^2/s used to cost a
+//        quarter of the flow; Manning bed friction far less);
 //      * Manning friction treated semi-implicitly (unconditionally stable);
 //   2. continuity in flux form with upwind face depth: eta += -dt/dx * (sum of face fluxes).
 //      A positivity limiter scales the outgoing fluxes of a cell that would otherwise empty,
@@ -57,7 +60,7 @@ export interface SolverParams {
 
 export const DEFAULT_SOLVER_PARAMS: SolverParams = {
   manningN: 0.03,
-  eddyViscosity: 0.3,
+  eddyViscosity: 0.05,
   cfl: 0.45,
   advection: true,
   spongeStartM: 40,
