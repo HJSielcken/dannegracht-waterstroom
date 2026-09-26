@@ -398,8 +398,9 @@ button:hover {
   color: var(--muted);
 }
 
+/* No `position` here: Leaflet places markers with position: absolute plus a transform, and
+   overriding it lays the markers out in flow, each pushed down by the ones before it. */
 .boat-icon {
-  position: relative;
   background: none;
   border: 0;
 }
