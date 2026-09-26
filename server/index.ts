@@ -4,7 +4,7 @@
 //   GET /levels  live water levels (server/levels.ts)
 //   WS  /ais     aisstream.io relay (server/ais.ts)
 //   GET /healthz liveness check
-// Configuration comes from environment variables; see .env.example.
+// Configuration comes from environment variables; see README.md (Docker).
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import type { Env } from './env.ts';

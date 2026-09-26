@@ -91,8 +91,9 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 
 De browser haalt AIS en waterstanden op bij `server/` (`/ais` en `/levels`), dat de site en beide
 endpoints op hetzelfde adres serveert (Docker of `pnpm start`, zie [Docker](#docker)). `pnpm run dev`
-start `server/` zelf op poort 8787 en stuurt `/ais` en `/levels` daarheen door; de variabelen komen
-uit `.env` (zie `.env.example`). De versie op GitHub Pages heeft geen server en dus geen live gegevens.
+start `server/` zelf op poort 8787 en stuurt `/ais` en `/levels` daarheen door. Zet in `.env`
+`VITE_AIS_PROXY_URL=/ais` en de variabelen uit de tabel onder [Docker](#docker). De versie op GitHub
+Pages heeft geen server en dus geen live gegevens.
 
 Standaard gebruikt `/levels` het RWS-meetpunt `maarssen.kanaal` voor het ARK en de HDSR-tijdreeks
 van de Vecht bij de Daalseweg (Maarssen); met `RWS_ARK_LOCATION_CODE` en `HDSR_VECHT_TIMESERIES_UUID`
