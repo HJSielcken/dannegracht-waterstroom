@@ -55,8 +55,9 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 - **Diepte en breedte van de gracht** zijn geschat (10 m breed, 1,8 m diep); zie `src/geo/RESEARCH.md`.
 - **De schutsluis** aan de Vecht-kant is een rijksmonument; of hij open of dicht staat is niet bekend.
   Bij een dichte sluis is er vrijwel geen doorstroming.
-- **Peilen.** Standaard staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen vereisen
-  `server/` met de meetlocaties van RWS en HDSR (zie [Docker](#docker)).
+- **Peilen.** Zonder live gegevens staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen
+  vereisen `server/` (zie [Docker](#docker)). Het dichtstbijzijnde Vecht-meetpunt van HDSR ligt bij
+  de Daalseweg in Maarssen, zo'n 8 km stroomopwaarts; het ARK-meetpunt van RWS ligt bij Maarssen.
 - **Brugstraat 10e** wordt in de browser opgezocht via PDOK en naar het dichtstbijzijnde water verplaatst.
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
@@ -79,26 +80,28 @@ endpoints op hetzelfde adres serveert (Docker of `pnpm start`, zie [Docker](#doc
 start `server/` zelf op poort 8787 en stuurt `/ais` en `/levels` daarheen door; de variabelen komen
 uit `.env` (zie `.env.example`). De versie op GitHub Pages heeft geen server en dus geen live gegevens.
 
-Zonder meetpuntcodes (`RWS_ARK_LOCATION_CODE`, `HDSR_VECHT_TIMESERIES_UUID`) geeft `/levels` het
-streefpeil terug, met als bron `ark-fallback+vecht-fallback`.
+Standaard gebruikt `/levels` het RWS-meetpunt `maarssen.kanaal` voor het ARK en de HDSR-tijdreeks
+van de Vecht bij de Daalseweg (Maarssen); met `RWS_ARK_LOCATION_CODE` en `HDSR_VECHT_TIMESERIES_UUID`
+kies je andere meetpunten. Is een meetpunt niet bereikbaar, dan geeft `/levels` voor die kant het
+streefpeil terug (bron `ark-fallback` of `vecht-fallback`).
 
 ## Docker
 
 Het image bevat één Node-proces (`server/`) dat de gebouwde site serveert en de endpoints `/levels`
 en `/ais` levert op hetzelfde adres.
 
-Draaien met Docker Compose (poort 8533): zet in `compose.yaml` je aisstream.io-sleutel en de
-meetpuntcodes onder `environment` en start het image van Docker Hub:
+Draaien met Docker Compose (poort 8533): zet in `compose.yaml` je aisstream.io-sleutel (en
+eventueel andere meetpuntcodes) onder `environment` en start het image van Docker Hub:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-| Variabele                    | Betekenis                                                     |
-| ---------------------------- | ------------------------------------------------------------- |
-| `AISSTREAM_API_KEY`          | API-sleutel van [aisstream.io](https://aisstream.io) voor AIS |
-| `RWS_ARK_LOCATION_CODE`      | Locatiecode van een ARK-meetpunt (waterinfo.rws.nl)           |
-| `HDSR_VECHT_TIMESERIES_UUID` | Lizard-tijdreeks van een Vecht-meetpunt (hdsr.lizard.net)     |
+| Variabele                    | Betekenis                                                            |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `AISSTREAM_API_KEY`          | API-sleutel van [aisstream.io](https://aisstream.io) voor AIS        |
+| `RWS_ARK_LOCATION_CODE`      | ARK-meetpunt (waterinfo.rws.nl), standaard `maarssen.kanaal`         |
+| `HDSR_VECHT_TIMESERIES_UUID` | Lizard-tijdreeks van de Vecht (hdsr.lizard.net), standaard Daalseweg |
 
 Zet je ingevulde `compose.yaml` niet terug in git; de sleutel is geheim. Een image lokaal bouwen kan
 met `docker build -t pofsok/dannegracht-waterstroom .`.

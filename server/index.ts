@@ -19,8 +19,12 @@ const env: Env = {
   AIS_BBOX_WEST: e.AIS_BBOX_WEST || '4.97',
   AIS_BBOX_NORTH: e.AIS_BBOX_NORTH || '52.20',
   AIS_BBOX_EAST: e.AIS_BBOX_EAST || '5.03',
-  RWS_ARK_LOCATION_CODE: e.RWS_ARK_LOCATION_CODE ?? '',
-  HDSR_VECHT_TIMESERIES_UUID: e.HDSR_VECHT_TIMESERIES_UUID ?? '',
+  // Rijkswaterstaat gauge on the ARK at Maarssen, about 4 km from the Dannegracht.
+  RWS_ARK_LOCATION_CODE: e.RWS_ARK_LOCATION_CODE || 'maarssen.kanaal',
+  // HDSR gauge "DAALSEWEG_2153-w_Vecht" (H.G.15, m NAP) in Maarssen, the nearest
+  // Vecht gauge upstream of Breukelen on the same boezem.
+  HDSR_VECHT_TIMESERIES_UUID:
+    e.HDSR_VECHT_TIMESERIES_UUID || '66ca9d96-6454-411f-a2a5-65c51225befe',
 };
 const port = Number(e.PORT || 8080);
 const distDir = resolve(e.DIST_DIR || 'dist');
@@ -59,12 +63,8 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(port, () => {
   console.log(`Dannegracht waterstroom on http://localhost:${port}`);
   console.log(`  AIS:   ${env.AISSTREAM_API_KEY ? 'on' : 'off (AISSTREAM_API_KEY not set)'}`);
-  console.log(
-    `  ARK:   ${env.RWS_ARK_LOCATION_CODE || 'streefpeil (RWS_ARK_LOCATION_CODE not set)'}`,
-  );
-  console.log(
-    `  Vecht: ${env.HDSR_VECHT_TIMESERIES_UUID || 'streefpeil (HDSR_VECHT_TIMESERIES_UUID not set)'}`,
-  );
+  console.log(`  ARK:   ${env.RWS_ARK_LOCATION_CODE}`);
+  console.log(`  Vecht: ${env.HDSR_VECHT_TIMESERIES_UUID}`);
 });
 
 const shutdown = (): void => {
