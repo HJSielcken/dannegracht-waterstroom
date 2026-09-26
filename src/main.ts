@@ -29,6 +29,7 @@ import { compassLabel, formatDuration } from './ui/field';
 import { FlowLayer, flowLegend } from './ui/flowLayer';
 import { ProbePanel } from './ui/probePanel';
 import { initSidebarResizer } from './ui/sidebarResizer';
+import { ScreenWakeLock } from './ui/wakeLock';
 
 const DEFAULT_CONFIG: SimConfig = { cellSizeM: 3, manningN: 0.03, timeScale: 1 };
 /**
@@ -50,6 +51,8 @@ let levels: BoundaryLevels = { ...DEFAULT_LEVELS };
 let currents: RiverCurrents = { ...DEFAULT_CURRENTS };
 let config: SimConfig = { ...DEFAULT_CONFIG };
 let running = true;
+/** Keeps a phone's screen on while the simulation runs. */
+const wakeLock = new ScreenWakeLock();
 let lockOpen = true;
 let virtualBoats: VirtualBoat[] = [];
 let aisBoats: Boat[] = [];
@@ -599,6 +602,7 @@ $('run').addEventListener('click', () => {
   running = !running;
   $('run').textContent = running ? 'Pauze' : 'Start';
   send({ type: 'run', running });
+  wakeLock.set(running);
 });
 const timeScale = $<HTMLInputElement>('time-scale');
 const updateTimeScale = () => {
@@ -636,6 +640,7 @@ async function init(): Promise<void> {
   renderCurrents();
   updateTimeScale();
   lockToggle.checked = lockOpen;
+  wakeLock.set(running);
   drawScene();
   fitToGracht();
   drawProbes();

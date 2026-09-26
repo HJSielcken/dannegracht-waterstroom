@@ -76,6 +76,9 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   binnenvaartschip dat de monding passeert, is de stroming in de gracht daardoor ongeveer een derde
   lager dan zonder die demping.
 - Niet gemodelleerd: wind, korte scheepsgolven, schroefwater.
+- **Verborgen tab.** Zolang de simulatie loopt, houdt de app het scherm aan (Screen Wake Lock,
+  alleen via https of localhost). Bij minimaliseren of een andere tab stopt de browser de
+  simulatie; op Android meteen. Bij terugkomen gaat hij verder waar hij was.
 
 ## Live AIS en waterstanden
 
