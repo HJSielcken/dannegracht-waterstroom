@@ -283,6 +283,17 @@ export function deadReckon(boat: Boat, now: number, maxS = MAX_DEAD_RECKON_S): B
   return { ...boat, position: moveAlong(boat.position, boat.courseDeg, boat.speedMs * t) };
 }
 
+/**
+ * Below this speed over ground (0.3 m/s, about 0.6 kn) an AIS boat counts as lying still:
+ * moored boats report a few tenths of a knot of GPS jitter.
+ */
+export const MIN_UNDERWAY_MS = 0.3;
+
+/** Whether an AIS boat is sailing, rather than moored or at anchor. */
+export function isUnderway(boat: Boat): boolean {
+  return boat.speedMs >= MIN_UNDERWAY_MS;
+}
+
 /** The point `distanceM` metres from `position` along `courseDeg` (clockwise from north). */
 export function moveAlong(position: LatLon, courseDeg: number, distanceM: number): LatLon {
   const rad = (courseDeg * Math.PI) / 180;

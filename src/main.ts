@@ -2,7 +2,8 @@ import 'leaflet/dist/leaflet.css';
 import './style.css';
 import L from 'leaflet';
 import { AisClient, type AisStatus } from './boats/ais';
-import { deadReckon } from './boats/aisMessages';
+import { deadReckon, isUnderway } from './boats/aisMessages';
+import { BoatNumbering } from './boats/numbering';
 import { SimWaterLock } from './boats/simLock';
 import { boatsToSimBoats } from './boats/toSim';
 import { VIRTUAL_BOAT_PRESETS, VirtualBoat, type VirtualBoatPresetId } from './boats/virtual';
@@ -148,7 +149,9 @@ function drawProbes(): void {
   panel.setProbes(probes);
 }
 
-const boatMarkers = new Map<string, { marker: L.Marker; box: number }>();
+const boatMarkers = new Map<string, { marker: L.Marker; box: number; label: number }>();
+/** Number on each boat's map marker and list row. */
+const boatNumbering = new BoatNumbering();
 /** Smallest on-screen boat size, so small boats stay visible when zoomed out. */
 const MIN_BOAT_PX = 26;
 
@@ -175,15 +178,18 @@ function metresPerPixel(): number {
 function drawBoats(boats: Boat[]): void {
   const mPerPx = metresPerPixel();
   const seen = new Set<string>();
+  const numbers = boatNumbering.assign(boats.map((b) => b.id));
   for (const b of boats) {
     seen.add(b.id);
+    const label = numbers.get(b.id)!;
     // True-to-scale when zoomed in, never smaller than MIN_BOAT_PX.
     const lengthPx = Math.max(MIN_BOAT_PX, b.lengthM / mPerPx);
     const box = Math.ceil(lengthPx * 1.1);
     const makeIcon = () =>
       L.divIcon({
         className: 'boat-icon',
-        html: `<div class="boat-icon__rot">${boatSvg(b, lengthPx)}</div>`,
+        html: `<div class="boat-icon__rot">${boatSvg(b, lengthPx)}</div>
+          <div class="boat-icon__label boat-badge--${b.source}">${label}</div>`,
         iconSize: [box, box],
         iconAnchor: [box / 2, box / 2],
       });
@@ -193,20 +199,21 @@ function drawBoats(boats: Boat[]): void {
       const marker = L.marker(pos, { icon: makeIcon(), keyboard: false, zIndexOffset: 1000 })
         .bindTooltip('', { direction: 'top' })
         .addTo(boatLayer);
-      entry = { marker, box };
+      entry = { marker, box, label };
       boatMarkers.set(b.id, entry);
     } else {
       entry.marker.setLatLng(pos);
-      // Rebuild the icon only when its on-screen size changes (zoom), not on every tick.
-      if (entry.box !== box) {
+      // Rebuild the icon only when its on-screen size (zoom) or number changes.
+      if (entry.box !== box || entry.label !== label) {
         entry.marker.setIcon(makeIcon());
         entry.box = box;
+        entry.label = label;
       }
     }
     const marker = entry.marker;
     const rot = marker.getElement()?.querySelector<HTMLElement>('.boat-icon__rot');
     if (rot) rot.style.transform = `rotate(${b.courseDeg.toFixed(1)}deg)`;
-    marker.setTooltipContent(boatLabel(b));
+    marker.setTooltipContent(boatLabel(b, label));
   }
   for (const [id, { marker }] of boatMarkers) {
     if (seen.has(id)) continue;
@@ -216,18 +223,20 @@ function drawBoats(boats: Boat[]): void {
 
   const list = $<HTMLUListElement>('boat-list');
   list.innerHTML = '';
-  for (const b of boats) {
+  for (const b of [...boats].sort((x, y) => numbers.get(x.id)! - numbers.get(y.id)!)) {
     const li = document.createElement('li');
-    li.innerHTML = `<span></span><span></span>`;
-    li.children[0]!.textContent = `${b.source === 'ais' ? 'AIS' : 'virtueel'} · ${b.name ?? b.id}`;
-    li.children[1]!.textContent = `${(b.massKg / 1000).toFixed(1)} t · ${b.displacementM3.toFixed(1)} m³ · ${(b.speedMs * 3.6).toFixed(1)} km/u`;
+    li.innerHTML = `<span class="boat-badge"></span><span class="boats__name"></span><span></span>`;
+    li.children[0]!.textContent = String(numbers.get(b.id));
+    li.children[0]!.classList.add(`boat-badge--${b.source}`);
+    li.children[1]!.textContent = `${b.source === 'ais' ? 'AIS' : 'virtueel'} · ${b.name ?? b.id}`;
+    li.children[2]!.textContent = `${(b.massKg / 1000).toFixed(1)} t · ${b.displacementM3.toFixed(1)} m³ · ${(b.speedMs * 3.6).toFixed(1)} km/u`;
     list.append(li);
   }
 }
 
-function boatLabel(b: Boat): string {
+function boatLabel(b: Boat, label: number): string {
   return [
-    b.name ?? b.id,
+    `${label}. ${b.name ?? b.id}`,
     `${b.lengthM.toFixed(1)} × ${b.beamM.toFixed(1)} m, diepgang ${b.draughtM.toFixed(1)} m`,
     `waterverplaatsing ≈ ${b.displacementM3.toFixed(1)} m³, massa ≈ ${(b.massKg / 1000).toFixed(1)} t`,
     `${(b.speedMs * 3.6).toFixed(1)} km/u, koers ${b.courseDeg.toFixed(0)}°`,
@@ -479,8 +488,9 @@ setInterval(() => {
   aisLock.advance(dt);
   const wallNow = Date.now();
   const virtual = virtualBoats.map((vb) => vb.toBoat(wallNow));
+  // Moored boats are left out: on the map they only clutter the gracht and the list.
   const ais = aisLock.apply(
-    aisBoats.map((b) => deadReckon(b, wallNow)),
+    aisBoats.filter(isUnderway).map((b) => deadReckon(b, wallNow)),
     inSimWater,
   );
   send({ type: 'setBoats', boats: boatsToSimBoats([...virtual, ...ais.sim], project) });

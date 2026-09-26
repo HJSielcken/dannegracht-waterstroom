@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAisMessage,
   deadReckon,
+  isUnderway,
   parseAisRawMessage,
   pruneStaleTracks,
   trackToBoat,
@@ -244,5 +245,22 @@ describe('deadReckon', () => {
       5000,
     );
     expect(trackToBoat(track)!.updatedAt).toBe(1000);
+  });
+});
+
+describe('isUnderway', () => {
+  const boat = trackToBoat({
+    mmsi: 1,
+    position: { lat: 52.17, lon: 5.0 },
+    courseDeg: 0,
+    speedMs: 0,
+    updatedAt: 0,
+    positionAt: 0,
+  })!;
+
+  it('treats moored boats with GPS jitter as lying still', () => {
+    expect(isUnderway(boat)).toBe(false);
+    expect(isUnderway({ ...boat, speedMs: 0.1 })).toBe(false);
+    expect(isUnderway({ ...boat, speedMs: 1.5 })).toBe(true);
   });
 });
