@@ -7,8 +7,8 @@ services:
     environment:
       # API-sleutel van https://aisstream.io/apikeys (leeg: geen live AIS)
       AISSTREAM_API_KEY: ''
-      # Locatiecode van een ARK-meetpunt, zie https://waterinfo.rws.nl (leeg: streefpeil)
+      # Locatiecode van een ARK-meetpunt, zie https://waterinfo.rws.nl (leeg: maarssen.kanaal)
       RWS_ARK_LOCATION_CODE: ''
-      # UUID van een Vecht-tijdreeks, zie https://hdsr.lizard.net (leeg: streefpeil)
+      # UUID van een Vecht-tijdreeks, zie https://hdsr.lizard.net (leeg: Vecht bij Daalseweg, Maarssen)
       HDSR_VECHT_TIMESERIES_UUID: ''
     restart: unless-stopped
