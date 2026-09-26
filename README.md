@@ -57,7 +57,7 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   Bij een dichte sluis is er vrijwel geen doorstroming.
 - **Peilen.** Zonder live gegevens staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen
   vereisen `server/` (zie [Docker](#docker)). Het dichtstbijzijnde Vecht-meetpunt van HDSR ligt bij
-  de Daalseweg in Maarssen, zo'n 8 km stroomopwaarts; het ARK-meetpunt van RWS ligt bij Maarssen.
+  de Daalseweg in Oud-Zuilen, zo'n 9 km stroomopwaarts; het ARK-meetpunt van RWS ligt bij Maarssen.
 - **Brugstraat 10e** wordt in de browser opgezocht via PDOK en naar het dichtstbijzijnde water verplaatst.
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
@@ -82,7 +82,7 @@ start `server/` zelf op poort 8787 en stuurt `/ais` en `/levels` daarheen door. 
 Pages heeft geen server en dus geen live gegevens.
 
 Standaard gebruikt `/levels` het RWS-meetpunt `maarssen.kanaal` voor het ARK en de HDSR-tijdreeks
-van de Vecht bij de Daalseweg (Maarssen); met `RWS_ARK_LOCATION_CODE` en `HDSR_VECHT_TIMESERIES_UUID`
+van de Vecht bij de Daalseweg (Oud-Zuilen); met `RWS_ARK_LOCATION_CODE` en `HDSR_VECHT_TIMESERIES_UUID`
 kies je andere meetpunten. Is een meetpunt niet bereikbaar, dan geeft `/levels` voor die kant het
 streefpeil terug (bron `ark-fallback` of `vecht-fallback`).
 
