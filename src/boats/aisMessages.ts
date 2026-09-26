@@ -23,7 +23,7 @@
 // and StaticDataReport (static; same Dimension/Type shape, no draught field
 // in Part A messages, so draught is nearly always unknown for these boats).
 import type { Boat, LatLon } from '../types';
-import { estimateHydrostatics } from './hydrostatics';
+import { classifyHull, estimateHydrostatics } from './hydrostatics';
 
 export interface AisMetaData {
   MMSI: number;
@@ -97,6 +97,8 @@ export interface AisTrack {
   beamM?: number;
   draughtM?: number;
   shipTypeCode?: number;
+  /** True once a class B message (the transponder type of most pleasure craft) was received. */
+  classB?: boolean;
   /** Epoch ms of the last message (static or dynamic) received for this MMSI. */
   updatedAt: number;
   /** Epoch ms of the last position report, i.e. the time `position` refers to. */
@@ -144,7 +146,10 @@ export function applyAisMessage(
 ): AisTrack {
   const meta = msg.MetaData;
   const mmsi = meta.MMSI;
-  const base: AisTrack = existing ?? { mmsi, updatedAt: now };
+  const isClassB =
+    msg.MessageType === 'StandardClassBPositionReport' || msg.MessageType === 'StaticDataReport';
+  const known: AisTrack = existing ?? { mmsi, updatedAt: now };
+  const base: AisTrack = isClassB ? { ...known, classB: true } : known;
 
   if (msg.MessageType === 'PositionReport' || msg.MessageType === 'StandardClassBPositionReport') {
     const body =
@@ -218,21 +223,33 @@ function numOr0(v: number | undefined): number {
   return isFiniteNumber(v) ? v : 0;
 }
 
+/** Stand-in hull for a class A vessel whose static data has not arrived yet: a Rijn-Herne ship. */
+export const DEFAULT_CARGO_HULL = { lengthM: 86, beamM: 9.5, shipTypeCode: 79 } as const;
+/** Stand-in hull for class B or pleasure-craft tracks without dimensions: a small motor boat. */
+export const DEFAULT_SMALL_HULL = { lengthM: 8, beamM: 2.5 } as const;
+
 /**
  * Convert a track into a `Boat`, if it has enough data (position + some
  * notion of size) to be worth showing. Missing dimensions fall back to a
- * small generic hull so the boat still renders and drives the sim, rather
- * than being dropped.
+ * generic hull so the boat still renders and drives the sim, rather than
+ * being dropped: small for class B transponders and pleasure-craft type
+ * codes, otherwise an inland cargo vessel, since class A AIS on the ARK is
+ * mostly commercial shipping.
  */
 export function trackToBoat(track: AisTrack): Boat | null {
   if (!track.position) return null;
-  const lengthM = track.lengthM && track.lengthM > 0 ? track.lengthM : 8;
-  const beamM = track.beamM && track.beamM > 0 ? track.beamM : 2.5;
+  const small = track.classB === true || classifyHull(track.shipTypeCode) === 'pleasure-sailing';
+  const fallback = small ? DEFAULT_SMALL_HULL : DEFAULT_CARGO_HULL;
+  const hasLength = track.lengthM !== undefined && track.lengthM > 0;
+  const lengthM = hasLength ? track.lengthM! : fallback.lengthM;
+  const beamM = track.beamM && track.beamM > 0 ? track.beamM : fallback.beamM;
   const hydro = estimateHydrostatics({
     lengthM,
     beamM,
     draughtM: track.draughtM,
-    shipTypeCode: track.shipTypeCode,
+    // Without a type code, a guessed cargo hull should also get a cargo hull form.
+    shipTypeCode:
+      track.shipTypeCode ?? (!small && !hasLength ? DEFAULT_CARGO_HULL.shipTypeCode : undefined),
   });
   return {
     id: `ais:${track.mmsi}`,
