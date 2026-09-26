@@ -132,6 +132,20 @@ wordt het image alleen gebouwd. Stel daarvoor in de repository-instellingen in:
 - secret `DOCKERHUB_TOKEN` – een Docker Hub access token (Account settings → Personal access tokens)
 - optioneel variabele `DOCKER_IMAGE` – imagenaam, standaard `<gebruikersnaam>/dannegracht-waterstroom`
 
+### Beheren op een UGREEN-NAS met Claude Code
+
+`.mcp.json` registreert de MCP-server `ugos` van [ugos-cli](https://github.com/metaneutrons/ugos-cli),
+waarmee Claude Code containers en compose-projecten op een UGOS-NAS kan aanmaken, starten, bijwerken
+en verwijderen. Installeer `ugos-mcp` (bijv. `brew install metaneutrons/tap/ugos-cli` of
+`cargo install --git https://github.com/metaneutrons/ugos-cli ugos-mcp`) en zet de inloggegevens in
+je shell voordat je `claude` start:
+
+```bash
+export UGOS_HOST=192.168.1.10 UGOS_USER=<gebruiker> UGOS_PASSWORD=<wachtwoord>
+```
+
+Gebruik bij voorkeur een apart account; de server kan alle containers op de NAS beheren.
+
 ## Ontwikkelen
 
 ```bash

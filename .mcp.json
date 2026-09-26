@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ugos": {
+      "command": "ugos-mcp",
+      "env": {
+        "UGOS_HOST": "${UGOS_HOST}",
+        "UGOS_USER": "${UGOS_USER}",
+        "UGOS_PASSWORD": "${UGOS_PASSWORD}"
+      }
+    }
+  }
+}
