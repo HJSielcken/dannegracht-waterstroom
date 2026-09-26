@@ -461,11 +461,17 @@ function inSimWater(p: LatLon): boolean {
   return gridKind[j * g.nx + i] !== LAND;
 }
 
-let lastBoatTick = performance.now();
+/**
+ * Simulated time the boats were last advanced to. Virtual and locked AIS boats run on the
+ * simulation's clock, not the wall clock: in a hidden tab the browser throttles or freezes this
+ * page (on Android the worker too), and a wall-clock step on return would move them far ahead of
+ * the simulated water, or out of it. On the sim clock they pick up where the sim is.
+ */
+let lastBoatSimS = 0;
 setInterval(() => {
-  const now = performance.now();
-  const dt = ((now - lastBoatTick) / 1000) * (running ? config.timeScale : 0);
-  lastBoatTick = now;
+  // A restarted worker starts again at 0 s; don't move boats backwards.
+  const dt = Math.max(0, simTimeS - lastBoatSimS);
+  lastBoatSimS = simTimeS;
   for (const vb of virtualBoats) vb.advance(dt);
   aisLock.advance(dt);
   const wallNow = Date.now();
