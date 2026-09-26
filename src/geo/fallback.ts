@@ -20,8 +20,7 @@ export const FALLBACK_ORIGIN: LatLon = { lat: 52.1732, lon: 4.9985 };
 
 /** River Vecht through Breukelen, north to south: along the Straatweg, bending south-east at the centre. */
 const VECHT_CENTERLINE: LatLon[] = [
-  { lat: 52.18166, lon: 5.00666 },
-  { lat: 52.18002, lon: 5.00532 },
+  { lat: 52.179, lon: 5.00469 }, // cut off at JUNCTION_BBOX.north (src/geo/overpass.ts)
   { lat: 52.17807, lon: 5.00411 },
   { lat: 52.17627, lon: 5.00374 },
   { lat: 52.17462, lon: 5.00382 },
@@ -48,7 +47,7 @@ const DANNE_CENTERLINE: LatLon[] = [
 
 /** Amsterdam-Rijnkanaal west of Breukelen centre, north to south, running slightly NNW-SSE. */
 const ARK_CENTERLINE: LatLon[] = [
-  { lat: 52.18166, lon: 4.99411 },
+  { lat: 52.179, lon: 4.99416 }, // cut off at JUNCTION_BBOX.north (src/geo/overpass.ts)
   { lat: 52.17702, lon: 4.9942 },
   { lat: 52.17253, lon: 4.99452 },
   { lat: 52.16953, lon: 4.99493 },
@@ -64,7 +63,7 @@ export const DANNEGRACHT_ROUTE: readonly LatLon[] = DANNE_CENTERLINE;
  * when it turns around.
  */
 export const ARK_ROUTE: readonly LatLon[] = [
-  { lat: 52.18094, lon: 4.99412 },
+  { lat: 52.17828, lon: 4.99417 },
   ...ARK_CENTERLINE.slice(1, -1),
   { lat: 52.16725, lon: 4.99527 },
 ];

@@ -5,6 +5,8 @@ import {
   parseAisRawMessage,
   pruneStaleTracks,
   trackToBoat,
+  DEFAULT_CARGO_HULL,
+  DEFAULT_SMALL_HULL,
   type AisRawMessage,
   type AisTrack,
 } from './aisMessages';
@@ -143,6 +145,40 @@ describe('trackToBoat', () => {
     expect(boat!.massKg).toBeGreaterThan(0);
     expect(boat!.source).toBe('ais');
     expect(boat!.id).toBe('ais:1');
+  });
+
+  it('assumes an inland cargo vessel for a class A track without static data', () => {
+    const boat = trackToBoat({ mmsi: 1, updatedAt: 0, position: { lat: 52.17, lon: 5.0 } })!;
+    expect(boat.lengthM).toBe(DEFAULT_CARGO_HULL.lengthM);
+    expect(boat.beamM).toBe(DEFAULT_CARGO_HULL.beamM);
+    expect(boat.massKg / 1000).toBeGreaterThan(1000);
+  });
+
+  it('assumes a small boat for class B tracks and pleasure craft without dimensions', () => {
+    const position = { lat: 52.17, lon: 5.0 };
+    for (const track of [
+      { mmsi: 1, updatedAt: 0, position, classB: true },
+      { mmsi: 2, updatedAt: 0, position, shipTypeCode: 37 },
+    ]) {
+      const boat = trackToBoat(track)!;
+      expect(boat.lengthM).toBe(DEFAULT_SMALL_HULL.lengthM);
+      expect(boat.beamM).toBe(DEFAULT_SMALL_HULL.beamM);
+    }
+  });
+
+  it('marks tracks as class B once a class B message arrives, without mutating the input', () => {
+    const start: AisTrack = { mmsi: 1, updatedAt: 0 };
+    const track = applyAisMessage(
+      start,
+      {
+        MessageType: 'StandardClassBPositionReport',
+        MetaData: { MMSI: 1 },
+        Message: { StandardClassBPositionReport: { Latitude: 52.17, Longitude: 5.0 } },
+      },
+      1000,
+    );
+    expect(track.classB).toBe(true);
+    expect(start.classB).toBeUndefined();
   });
 
   it('produces sane hydrostatics for a fully-known class A cargo track', () => {

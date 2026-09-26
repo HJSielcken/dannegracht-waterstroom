@@ -59,6 +59,11 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
 - **Peilen.** Standaard staan Vecht en ARK beide op −0,40 m NAP (aanname). Live peilen vereisen
   `server/` met de meetlocaties van RWS en HDSR (zie [Docker](#docker)).
 - **Plezierboten** in de gracht hebben meestal geen AIS; gebruik daarvoor de virtuele boten.
+- **AIS-boten in het gesimuleerde water** volgen AIS niet meer: zodra een boot het rekengebied in
+  vaart, vaart hij met de koers en snelheid van dat moment door op de simulatieklok, zodat
+  verspringende AIS-posities geen valse golven maken. Een bocht die de boot daarna maakt, ziet het
+  model dus niet. Verlaat hij het water, dan staat hij weer op zijn AIS-positie en telt hij niet meer
+  mee.
 - **Rivierstroming** is een typische waarde, geen meting. Het werkelijke debiet wisselt met inlaat en
   spuien; de Vecht kan bij Muiden zelfs tijdelijk terugstromen.
 - **Snelheid in de gracht** is bij een peilverschil ongeveer de helft van wat de Manning-formule geeft:
@@ -71,6 +76,9 @@ Lees de uitkomsten als **indicatief**. De belangrijkste onzekerheden:
   binnenvaartschip dat de monding passeert, is de stroming in de gracht daardoor ongeveer een derde
   lager dan zonder die demping.
 - Niet gemodelleerd: wind, korte scheepsgolven, schroefwater.
+- **Verborgen tab.** Zolang de simulatie loopt, houdt de app het scherm aan (Screen Wake Lock,
+  alleen via https of localhost). Bij minimaliseren of een andere tab stopt de browser de
+  simulatie; op Android meteen. Bij terugkomen gaat hij verder waar hij was.
 
 ## Live AIS en waterstanden
 
